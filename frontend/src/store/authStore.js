@@ -1,7 +1,10 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import api from '../services/api';
 
-const useAuthStore = create((set, get) => ({
+const useAuthStore = create(
+  persist(
+    (set, get) => ({
   // State
   user: null,
   accessToken: null,
@@ -99,6 +102,13 @@ const useAuthStore = create((set, get) => ({
 
   // Check if user is authenticated (for app initialization)
   checkAuth: async () => {
+    const { accessToken, user } = get();
+
+    // If we have a token and user in storage, assume authenticated
+    if (accessToken && user) {
+      return true;
+    }
+
     try {
       // Try to refresh the token using the httpOnly cookie
       const response = await api.post('/token/refresh/');
@@ -124,6 +134,16 @@ const useAuthStore = create((set, get) => ({
       return false;
     }
   }
-}));
+}),
+    {
+      name: 'auth-storage',
+      partialPersist: (state) => ({
+        user: state.user,
+        accessToken: state.accessToken,
+        isAuthenticated: state.isAuthenticated,
+      }),
+    }
+  )
+);
 
 export default useAuthStore;

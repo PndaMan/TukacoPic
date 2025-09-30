@@ -1,0 +1,5 @@
+# Ignore all node_modules folders
+**/node_modules
+
+# But DO NOT ignore the frontend/dist folder, which we need for deployment
+!/frontend/dist

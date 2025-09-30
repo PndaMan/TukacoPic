@@ -159,7 +159,7 @@ const ProfilePage = () => {
                 <div key={photo.id} className="space-y-3">
                   <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     <img
-                      src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000'}${photo.image}`}
+                      src={photo.image}
                       alt="Your uploaded photo"
                       className="w-full h-full object-cover"
                     />

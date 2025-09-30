@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    allowedHosts: ["medline-permit-vector-ppm.trycloudflare.com", "decor-walk-period-cloudy.trycloudflare.com"]
+    allowedHosts: ["receptor-beaver-wednesday-multimedia.trycloudflare.com"]
   },
   build: {
     outDir: 'dist',
