@@ -104,17 +104,17 @@ const HomePage = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4">
+      <div className="text-center mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2 sm:mb-4">
           Choose Your Favorite
         </h1>
-        <p className="text-lg text-gray-600">
-          Click on the photo you think is better!
+        <p className="text-base sm:text-lg text-gray-600">
+          Tap the photo you think is better!
         </p>
       </div>
 
       {message && (
-        <div className={`text-center mb-6 p-4 rounded-lg ${
+        <div className={`text-center mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg text-sm sm:text-base ${
           message.includes('Error')
             ? 'bg-red-100 text-red-700'
             : 'bg-green-100 text-green-700'
@@ -123,9 +123,9 @@ const HomePage = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
         {photos.map((photo, index) => (
-          <div key={photo.id} className="space-y-4">
+          <div key={photo.id} className="space-y-3 sm:space-y-4">
             <div className="card overflow-hidden">
               <div className="aspect-square relative group">
                 <img
@@ -136,10 +136,10 @@ const HomePage = () => {
                 {!voted && !loading && (
                   <button
                     onClick={() => handleVote(photo.id, photos[1 - index].id)}
-                    className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition duration-300 flex items-center justify-center group"
+                    className="absolute inset-0 bg-black bg-opacity-0 active:bg-opacity-30 md:hover:bg-opacity-20 transition duration-300 flex items-center justify-center group"
                     disabled={loading}
                   >
-                    <span className="bg-primary text-white px-6 py-3 rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition duration-300 transform scale-95 group-hover:scale-100">
+                    <span className="bg-primary text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold text-sm sm:text-base opacity-0 group-hover:opacity-100 group-active:opacity-100 transition duration-300 transform scale-95 group-hover:scale-100 group-active:scale-100">
                       Choose This One
                     </span>
                   </button>
@@ -147,11 +147,11 @@ const HomePage = () => {
               </div>
             </div>
 
-            <div className="text-center space-y-2">
-              <p className="text-sm text-gray-600">
+            <div className="text-center space-y-1 sm:space-y-2">
+              <p className="text-xs sm:text-sm text-gray-600">
                 by <span className="font-medium">{photo.uploader.username}</span>
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs sm:text-sm text-gray-500">
                 Elo Score: <span className="font-medium">{Math.round(photo.elo_score)}</span>
               </p>
             </div>
@@ -160,16 +160,16 @@ const HomePage = () => {
       </div>
 
       {voted && (
-        <div className="text-center mt-8">
-          <p className="text-gray-600">Loading next photo pair...</p>
+        <div className="text-center mt-6 sm:mt-8">
+          <p className="text-sm sm:text-base text-gray-600">Loading next photo pair...</p>
         </div>
       )}
 
       {!voted && !loading && (
-        <div className="text-center mt-8">
+        <div className="text-center mt-6 sm:mt-8">
           <button
             onClick={fetchPhotoPair}
-            className="btn-secondary"
+            className="btn-secondary text-sm sm:text-base"
           >
             Skip This Pair
           </button>

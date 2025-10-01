@@ -11,7 +11,7 @@ const LeaderboardPage = () => {
       try {
         setLoading(true);
         const response = await api.get('/leaderboard/');
-        setPhotos(response.data.results);
+        setPhotos(response.data.results || response.data);
       } catch (err) {
         setError('Failed to load leaderboard');
         console.error('Error fetching leaderboard:', err);
@@ -47,32 +47,32 @@ const LeaderboardPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4">
+      <div className="text-center mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2 sm:mb-4">
           Top Ivan Photos
         </h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-base sm:text-lg text-gray-600">
           Top-rated photos based on community votes
         </p>
       </div>
 
       {photos.length === 0 ? (
         <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
             No Photos Yet
           </h2>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             Be the first to upload and vote on photos!
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           {photos.map((photo, index) => (
             <div key={photo.id} className="card">
               <div className="relative">
                 {/* Rank badge */}
-                <div className="absolute top-2 left-2 z-10">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                <div className="absolute top-1 left-1 sm:top-2 sm:left-2 z-10">
+                  <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm ${
                     index === 0 ? 'bg-yellow-500' :
                     index === 1 ? 'bg-gray-400' :
                     index === 2 ? 'bg-orange-500' :
@@ -95,39 +95,24 @@ const LeaderboardPage = () => {
                 </div>
               </div>
 
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="font-semibold text-gray-800">
+              <div className="p-2 sm:p-3 md:p-4">
+                <div className="flex justify-between items-center">
+                  <div className="min-w-0 flex-1 mr-2">
+                    <p className="font-semibold text-gray-800 text-xs sm:text-sm md:text-base truncate">
                       {photo.uploader.username}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs sm:text-sm text-gray-500">
                       {new Date(photo.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-primary">
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-sm sm:text-base md:text-lg font-bold text-primary">
                       {Math.round(photo.elo_score)}
                     </div>
                     <div className="text-xs text-gray-500">
-                      Elo Score
+                      Elo
                     </div>
                   </div>
-                </div>
-
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span className="flex items-center">
-                    <span className="text-green-600 font-medium">
-                      {photo.wins_count}
-                    </span>
-                    <span className="ml-1">wins</span>
-                  </span>
-                  <span className="flex items-center">
-                    <span className="text-red-600 font-medium">
-                      {photo.losses_count}
-                    </span>
-                    <span className="ml-1">losses</span>
-                  </span>
                 </div>
               </div>
             </div>

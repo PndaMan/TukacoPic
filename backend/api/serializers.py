@@ -46,6 +46,7 @@ class PhotoSerializer(serializers.ModelSerializer):
         # Check file size (100MB = 104857600 bytes)
         if value.size > 104857600:
             raise serializers.ValidationError("Image file too large. Maximum size is 100MB.")
+
         return value
 
 
@@ -74,10 +75,19 @@ class BulkPhotoUploadSerializer(serializers.Serializer):
         images = validated_data['images']
         user = self.context['request'].user
         photos = []
+        skipped = []
 
         for image in images:
+            # Skip if duplicate filename exists
+            if Photo.objects.filter(image__endswith=image.name).exists():
+                skipped.append(image.name)
+                continue
+
             photo = Photo.objects.create(uploader=user, image=image)
             photos.append(photo)
+
+        # Store skipped files info for response
+        self.skipped_files = skipped
 
         return photos
 

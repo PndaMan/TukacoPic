@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    allowedHosts: ["receptor-beaver-wednesday-multimedia.trycloudflare.com"]
+    allowedHosts: ["tukacopic.aether-lab.xyz"]
   },
   build: {
     outDir: 'dist',

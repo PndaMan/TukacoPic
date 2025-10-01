@@ -58,61 +58,61 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2 sm:mb-4">
           Profile
         </h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-base sm:text-lg text-gray-600">
           Your TukacoPic stats and uploaded photos
         </p>
       </div>
 
       {/* Profile Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
         <div className="card">
-          <div className="p-6 text-center">
-            <div className="text-3xl font-bold text-primary mb-2">
+          <div className="p-4 sm:p-6 text-center">
+            <div className="text-2xl sm:text-3xl font-bold text-primary mb-1 sm:mb-2">
               {profile?.stats?.photos_uploaded || 0}
             </div>
-            <div className="text-gray-600">Photos Uploaded</div>
+            <div className="text-xs sm:text-sm md:text-base text-gray-600">Photos Uploaded</div>
           </div>
         </div>
 
         <div className="card">
-          <div className="p-6 text-center">
-            <div className="text-3xl font-bold text-primary mb-2">
+          <div className="p-4 sm:p-6 text-center">
+            <div className="text-2xl sm:text-3xl font-bold text-primary mb-1 sm:mb-2">
               {profile?.stats?.votes_cast || 0}
             </div>
-            <div className="text-gray-600">Votes Cast</div>
+            <div className="text-xs sm:text-sm md:text-base text-gray-600">Votes Cast</div>
           </div>
         </div>
 
         <div className="card">
-          <div className="p-6 text-center">
-            <div className="text-3xl font-bold text-primary mb-2">
+          <div className="p-4 sm:p-6 text-center">
+            <div className="text-2xl sm:text-3xl font-bold text-primary mb-1 sm:mb-2">
               {Math.round(profile?.stats?.total_elo || 0)}
             </div>
-            <div className="text-gray-600">Total Elo</div>
+            <div className="text-xs sm:text-sm md:text-base text-gray-600">Total Elo</div>
           </div>
         </div>
 
         <div className="card">
-          <div className="p-6 text-center">
-            <div className="text-3xl font-bold text-primary mb-2">
+          <div className="p-4 sm:p-6 text-center">
+            <div className="text-2xl sm:text-3xl font-bold text-primary mb-1 sm:mb-2">
               {Math.round(profile?.stats?.average_elo || 0)}
             </div>
-            <div className="text-gray-600">Average Elo</div>
+            <div className="text-xs sm:text-sm md:text-base text-gray-600">Average Elo</div>
           </div>
         </div>
       </div>
 
       {/* User Info */}
-      <div className="card mb-8">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+      <div className="card mb-6 sm:mb-8">
+        <div className="p-4 sm:p-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-3 sm:mb-4">
             Account Information
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Username
@@ -139,24 +139,24 @@ const ProfilePage = () => {
 
       {/* User Photos */}
       <div className="card">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+        <div className="p-4 sm:p-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">
             Your Photos
           </h2>
 
           {userPhotos.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 mb-4">
+            <div className="text-center py-8 sm:py-12">
+              <p className="text-sm sm:text-base text-gray-600 mb-4">
                 You haven't uploaded any photos yet.
               </p>
-              <a href="/upload" className="btn-primary">
+              <a href="/upload" className="btn-primary text-sm sm:text-base">
                 Upload Your First Photo
               </a>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {userPhotos.map((photo) => (
-                <div key={photo.id} className="space-y-3">
+                <div key={photo.id} className="space-y-2 sm:space-y-3">
                   <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     <img
                       src={photo.image}
@@ -165,10 +165,10 @@ const ProfilePage = () => {
                     />
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-primary">
+                    <div className="text-base sm:text-lg font-semibold text-primary">
                       {Math.round(photo.elo_score)}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-xs sm:text-sm text-gray-500">
                       Elo Score
                     </div>
                     <div className="text-xs text-gray-400">

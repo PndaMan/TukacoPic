@@ -117,12 +117,13 @@ class LeaderboardView(generics.ListAPIView):
     """Public leaderboard of top photos"""
     serializer_class = LeaderboardSerializer
     permission_classes = [AllowAny]
+    pagination_class = None  # Disable pagination for leaderboard
 
     def get_queryset(self):
         return Photo.objects.annotate(
             wins_count=Count('wins'),
             losses_count=Count('losses')
-        ).order_by('-elo_score', '-created_at')
+        ).order_by('-elo_score', '-created_at')[:100]  # Top 100 photos
 
 
 class PhotoUploadView(generics.CreateAPIView):
@@ -131,6 +132,18 @@ class PhotoUploadView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
+        # Check if duplicate before validation
+        image = request.data.get('image')
+        if image and hasattr(image, 'name'):
+            if Photo.objects.filter(image__endswith=image.name).exists():
+                return Response(
+                    {
+                        'message': f'Photo "{image.name}" already exists (duplicate skipped)',
+                        'duplicate': True
+                    },
+                    status=status.HTTP_200_OK
+                )
+
         serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         photo = serializer.save()
@@ -152,13 +165,21 @@ def bulk_photo_upload(request):
 
     if serializer.is_valid():
         photos = serializer.save()
-        return Response(
-            {
-                'message': f'{len(photos)} photos uploaded successfully',
-                'photos': PhotoSerializer(photos, many=True).data
-            },
-            status=status.HTTP_201_CREATED
-        )
+        skipped = getattr(serializer, 'skipped_files', [])
+
+        message = f'{len(photos)} photo(s) uploaded successfully'
+        if skipped:
+            message += f', {len(skipped)} duplicate(s) skipped'
+
+        response_data = {
+            'message': message,
+            'photos': PhotoSerializer(photos, many=True).data
+        }
+
+        if skipped:
+            response_data['skipped'] = skipped
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

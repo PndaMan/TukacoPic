@@ -15,7 +15,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-pro
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0', cast=lambda v: [s.strip() for s in v.split(',')])
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0,api.tukacopic.aether-lab.xyz', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Application definition
 DJANGO_APPS = [
@@ -171,7 +171,7 @@ SIMPLE_JWT = {
 # CORS settings
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000',
+    default='http://localhost:3000,http://127.0.0.1:3000,https://tukacopic.aether-lab.xyz',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
@@ -180,7 +180,7 @@ CORS_ALLOW_CREDENTIALS = True
 # CSRF settings
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='https://decor-walk-period-cloudy.trycloudflare.com',
+    default='https://api.tukacopic.aether-lab.xyz,https://tukacopic.aether-lab.xyz',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
