@@ -9,6 +9,7 @@ import math
 class Photo(models.Model):
     uploader = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_photos')
     image = models.ImageField(upload_to='photos/')
+    file_hash = models.CharField(max_length=64, unique=True, db_index=True, null=True, blank=True)
     elo_score = models.FloatField(default=1200.0)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment, TukacodleScore
+import hashlib
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -84,12 +85,18 @@ class BulkPhotoUploadSerializer(serializers.Serializer):
         skipped = []
 
         for image in images:
-            # Skip if duplicate filename exists
-            if Photo.objects.filter(image__endswith=image.name).exists():
+            # Calculate hash to check for duplicates
+            image.seek(0)
+            file_content = image.read()
+            file_hash = hashlib.sha256(file_content).hexdigest()
+            image.seek(0)
+
+            # Skip if duplicate hash exists
+            if Photo.objects.filter(file_hash=file_hash).exists():
                 skipped.append(image.name)
                 continue
 
-            photo = Photo.objects.create(uploader=user, image=image)
+            photo = Photo.objects.create(uploader=user, image=image, file_hash=file_hash)
             photos.append(photo)
 
         # Store skipped files info for response

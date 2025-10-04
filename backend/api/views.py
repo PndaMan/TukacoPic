@@ -30,6 +30,7 @@ from .serializers import (
     TukacodleScoreSerializer
 )
 import random
+import hashlib
 from django.db import models
 
 
@@ -252,21 +253,33 @@ class PhotoUploadView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        # Check if duplicate before validation
+        # Calculate hash of uploaded image to check for duplicates
         image = request.data.get('image')
-        if image and hasattr(image, 'name'):
-            if Photo.objects.filter(image__endswith=image.name).exists():
+        if image and hasattr(image, 'read'):
+            # Read the file content
+            image.seek(0)  # Reset file pointer to beginning
+            file_content = image.read()
+            file_hash = hashlib.sha256(file_content).hexdigest()
+            image.seek(0)  # Reset again for actual upload
+
+            # Check if this exact file already exists
+            existing_photo = Photo.objects.filter(file_hash=file_hash).select_related('uploader').first()
+            if existing_photo:
                 return Response(
                     {
-                        'message': f'Photo "{image.name}" already exists (duplicate skipped)',
-                        'duplicate': True
+                        'message': f'This photo already exists (uploaded by {existing_photo.uploader.username})',
+                        'duplicate': True,
+                        'original_uploader': existing_photo.uploader.username,
+                        'original_upload_date': existing_photo.created_at
                     },
                     status=status.HTTP_200_OK
                 )
 
         serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        photo = serializer.save()
+
+        # Save with hash
+        photo = serializer.save(file_hash=file_hash if image else None)
 
         # Check and unlock achievements
         unlocked = check_and_unlock_achievements(request.user)
