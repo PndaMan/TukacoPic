@@ -40,13 +40,8 @@ const HomePage = () => {
         loser_id: loserId
       });
 
-      setVoted(true);
-      setMessage('Vote submitted successfully!');
-
-      // Automatically load next pair after 2 seconds
-      setTimeout(() => {
-        fetchPhotoPair();
-      }, 2000);
+      // Instantly load next pair
+      fetchPhotoPair();
     } catch (error) {
       setMessage('Error submitting vote. Please try again.');
       console.error('Error submitting vote:', error);
