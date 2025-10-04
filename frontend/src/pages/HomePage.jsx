@@ -3,32 +3,56 @@ import api from '../services/api';
 
 const HomePage = () => {
   const [photos, setPhotos] = useState([]);
+  const [nextPhotos, setNextPhotos] = useState(null);
   const [loading, setLoading] = useState(false);
   const [voted, setVoted] = useState(false);
   const [message, setMessage] = useState('');
   const hasFetchedRef = useRef(false);
 
-  const fetchPhotoPair = async () => {
+  // Preload images using Image() constructor
+  const preloadImages = (photoArray) => {
+    photoArray.forEach(photo => {
+      const img = new Image();
+      img.src = photo.image;
+    });
+  };
+
+  const fetchPhotoPair = async (isPreload = false) => {
     try {
-      setLoading(true);
-      setVoted(false);
-      setMessage('');
+      if (!isPreload) {
+        setLoading(true);
+        setVoted(false);
+        setMessage('');
+      }
 
       const response = await api.get('/photos/pair/');
-      setPhotos(response.data.photos);
-    } catch (error) {
-      if (error.response?.data?.error === 'You reached the end, consider uploading more Ivan photos') {
-        setMessage('You reached the end, consider uploading more Ivan photos');
-        setPhotos([]);
-      } else if (error.response?.data?.error === 'No more photos, upload one of Ivan') {
-        setMessage('No more photos, upload one of Ivan');
-        setPhotos([]);
+
+      if (isPreload) {
+        setNextPhotos(response.data.photos);
+        preloadImages(response.data.photos);
       } else {
-        setMessage('Error loading photos. Please try again.');
+        setPhotos(response.data.photos);
+        preloadImages(response.data.photos);
+        // Immediately fetch next pair in background
+        setTimeout(() => fetchPhotoPair(true), 100);
       }
-      console.error('Error fetching photo pair:', error);
+    } catch (error) {
+      if (!isPreload) {
+        if (error.response?.data?.error === 'You reached the end, consider uploading more Ivan photos') {
+          setMessage('You reached the end, consider uploading more Ivan photos');
+          setPhotos([]);
+        } else if (error.response?.data?.error === 'No more photos, upload one of Ivan') {
+          setMessage('No more photos, upload one of Ivan');
+          setPhotos([]);
+        } else {
+          setMessage('Error loading photos. Please try again.');
+        }
+        console.error('Error fetching photo pair:', error);
+      }
     } finally {
-      setLoading(false);
+      if (!isPreload) {
+        setLoading(false);
+      }
     }
   };
 
@@ -41,8 +65,16 @@ const HomePage = () => {
         loser_id: loserId
       });
 
-      // Instantly load next pair
-      fetchPhotoPair();
+      // Use preloaded photos if available, otherwise fetch
+      if (nextPhotos) {
+        setPhotos(nextPhotos);
+        setNextPhotos(null);
+        setLoading(false);
+        // Fetch next pair in background
+        setTimeout(() => fetchPhotoPair(true), 100);
+      } else {
+        fetchPhotoPair();
+      }
     } catch (error) {
       setMessage('Error submitting vote. Please try again.');
       console.error('Error submitting vote:', error);
