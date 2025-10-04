@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.db.models import Count, Avg, Q
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from .models import Photo, Vote, UserProfile, Friendship, Reaction
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement
 from .serializers import (
     UserRegistrationSerializer,
     PhotoSerializer,
@@ -25,6 +25,97 @@ from .serializers import (
     PhotoWithReactionsSerializer
 )
 import random
+from django.db import models
+
+
+def check_and_unlock_achievements(user):
+    """Check and unlock achievements for a user based on their stats"""
+    # Get user stats
+    vote_count = Vote.objects.filter(voter=user).count()
+    photo_count = Photo.objects.filter(uploader=user).count()
+    friend_count = Friendship.get_friends(user).count()
+    reaction_count = Reaction.objects.filter(user=user).count()
+    reactions_received = Reaction.objects.filter(photo__uploader=user).count()
+    streak = user.profile.current_voting_streak
+    max_elo = Photo.objects.filter(uploader=user).aggregate(max_elo=models.Max('elo_score'))['max_elo'] or 0
+    avg_elo = Photo.objects.filter(uploader=user).aggregate(avg_elo=Avg('elo_score'))['avg_elo'] or 0
+
+    # Get single photo max reactions
+    max_reactions_on_photo = 0
+    for photo in Photo.objects.filter(uploader=user):
+        photo_reactions = Reaction.objects.filter(photo=photo).count()
+        if photo_reactions > max_reactions_on_photo:
+            max_reactions_on_photo = photo_reactions
+
+    # Achievement conditions
+    achievements_to_unlock = []
+
+    # Easy achievements
+    if vote_count >= 1:
+        achievements_to_unlock.append('First Steps')
+    if photo_count >= 1:
+        achievements_to_unlock.append('Newbie Uploader')
+    if friend_count >= 1:
+        achievements_to_unlock.append('Social Starter')
+    if reaction_count >= 1:
+        achievements_to_unlock.append('Reactor')
+
+    # Medium achievements
+    if vote_count >= 100:
+        achievements_to_unlock.append('Century Voter')
+    if friend_count >= 10:
+        achievements_to_unlock.append('Social Butterfly')
+    if reactions_received >= 50:
+        achievements_to_unlock.append('Popular')
+    if streak >= 7:
+        achievements_to_unlock.append('Consistent')
+    if photo_count >= 50:
+        achievements_to_unlock.append('Photographer')
+    if reaction_count >= 100:
+        achievements_to_unlock.append('Generous')
+
+    # Hard achievements
+    if vote_count >= 1000:
+        achievements_to_unlock.append('Thousand Votes')
+    if streak >= 30:
+        achievements_to_unlock.append('Dedicated')
+    if max_reactions_on_photo >= 100:
+        achievements_to_unlock.append('Viral')
+    if max_elo >= 1500:
+        achievements_to_unlock.append('Elo Master')
+    if photo_count >= 25 and avg_elo > 1200:
+        achievements_to_unlock.append('Quality Creator')
+    if friend_count >= 50:
+        achievements_to_unlock.append('Friend to All')
+
+    # Legendary achievements
+    if streak >= 100:
+        achievements_to_unlock.append('Obsessed')
+    if vote_count >= 5000:
+        achievements_to_unlock.append('Vote Master')
+    if photo_count >= 200:
+        achievements_to_unlock.append('King of Content')
+
+    # Check if user has earned all badges
+    badge = user.profile.get_badge()
+    if badge == 'King of the Kov':
+        achievements_to_unlock.append('Elite Collector')
+
+    # Unlock achievements
+    unlocked = []
+    for achievement_name in achievements_to_unlock:
+        try:
+            achievement = Achievement.objects.get(name=achievement_name)
+            user_achievement, created = UserAchievement.objects.get_or_create(
+                user=user,
+                achievement=achievement
+            )
+            if created:
+                unlocked.append(achievement_name)
+        except Achievement.DoesNotExist:
+            continue
+
+    return unlocked
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -105,11 +196,19 @@ def submit_vote(request):
     if serializer.is_valid():
         try:
             vote = serializer.save()
+
+            # Update voting streak
+            request.user.profile.update_voting_streak()
+
+            # Check and unlock achievements
+            unlocked = check_and_unlock_achievements(request.user)
+
             vote_serializer = VoteSerializer(vote)
             return Response(
                 {
                     'message': 'Vote submitted successfully',
-                    'vote': vote_serializer.data
+                    'vote': vote_serializer.data,
+                    'unlocked_achievements': unlocked
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -157,10 +256,14 @@ class PhotoUploadView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         photo = serializer.save()
 
+        # Check and unlock achievements
+        unlocked = check_and_unlock_achievements(request.user)
+
         return Response(
             {
                 'message': 'Photo uploaded successfully',
-                'photo': PhotoSerializer(photo).data
+                'photo': PhotoSerializer(photo).data,
+                'unlocked_achievements': unlocked
             },
             status=status.HTTP_201_CREATED
         )
@@ -362,6 +465,10 @@ def accept_friend_request(request, friendship_id):
     friendship.status = 'accepted'
     friendship.save()
 
+    # Check and unlock achievements for both users
+    check_and_unlock_achievements(request.user)
+    check_and_unlock_achievements(friendship.from_user)
+
     return Response(FriendshipSerializer(friendship).data)
 
 
@@ -444,8 +551,13 @@ def add_reaction(request, photo_id):
         reaction_type=reaction_type
     )
 
+    # Check and unlock achievements
+    unlocked = check_and_unlock_achievements(request.user)
+
     if created:
-        return Response(ReactionSerializer(reaction).data, status=status.HTTP_201_CREATED)
+        response_data = ReactionSerializer(reaction).data
+        response_data['unlocked_achievements'] = unlocked
+        return Response(response_data, status=status.HTTP_201_CREATED)
     else:
         return Response({'message': 'Already reacted'}, status=status.HTTP_200_OK)
 

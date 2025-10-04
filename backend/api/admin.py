@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Photo, Vote, UserProfile, Friendship, Reaction
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement
 
 
 @admin.register(Photo)
@@ -41,3 +41,18 @@ class ReactionAdmin(admin.ModelAdmin):
     list_filter = ['reaction_type', 'created_at']
     search_fields = ['user__username']
     readonly_fields = ['created_at']
+
+
+@admin.register(Achievement)
+class AchievementAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'icon', 'difficulty', 'points']
+    list_filter = ['difficulty']
+    search_fields = ['name']
+
+
+@admin.register(UserAchievement)
+class UserAchievementAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'achievement', 'unlocked_at']
+    list_filter = ['achievement', 'unlocked_at']
+    search_fields = ['user__username', 'achievement__name']
+    readonly_fields = ['unlocked_at']

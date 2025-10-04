@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Photo, Vote, UserProfile, Friendship, Reaction
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -179,12 +179,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
     badge_progress = serializers.SerializerMethodField()
     profile_picture = serializers.SerializerMethodField()
     banner_image = serializers.SerializerMethodField()
+    achievements = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
         fields = ['id', 'username', 'email', 'date_joined', 'profile_picture', 'banner_image',
-                  'bio', 'badge', 'badge_progress', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+                  'bio', 'badge', 'badge_progress', 'current_voting_streak', 'longest_voting_streak',
+                  'achievements', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'current_voting_streak', 'longest_voting_streak', 'created_at', 'updated_at']
 
     def get_badge(self, obj):
         return obj.get_badge()
@@ -201,6 +203,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if obj.banner_image:
             return f"https://apitukacopic.aether-lab.xyz{obj.banner_image.url}"
         return None
+
+    def get_achievements(self, obj):
+        user_achievements = UserAchievement.objects.filter(user=obj.user).select_related('achievement')
+        return UserAchievementSerializer(user_achievements, many=True).data
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -224,10 +230,14 @@ class PublicUserSerializer(serializers.ModelSerializer):
     banner_image = serializers.SerializerMethodField()
     badge = serializers.SerializerMethodField()
     bio = serializers.CharField(source='profile.bio', read_only=True)
+    current_voting_streak = serializers.IntegerField(source='profile.current_voting_streak', read_only=True)
+    longest_voting_streak = serializers.IntegerField(source='profile.longest_voting_streak', read_only=True)
+    achievements = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'date_joined', 'profile_picture', 'banner_image', 'badge', 'bio']
+        fields = ['id', 'username', 'date_joined', 'profile_picture', 'banner_image', 'badge', 'bio',
+                  'current_voting_streak', 'longest_voting_streak', 'achievements']
 
     def get_profile_picture(self, obj):
         if hasattr(obj, 'profile') and obj.profile.profile_picture:
@@ -243,6 +253,10 @@ class PublicUserSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'profile'):
             return obj.profile.get_badge()
         return None
+
+    def get_achievements(self, obj):
+        user_achievements = UserAchievement.objects.filter(user=obj).select_related('achievement')
+        return UserAchievementSerializer(user_achievements, many=True).data
 
 
 class FriendshipSerializer(serializers.ModelSerializer):
@@ -306,3 +320,17 @@ class PhotoWithReactionsSerializer(serializers.ModelSerializer):
             user_reactions = obj.reactions.filter(user=request.user).values_list('reaction_type', flat=True)
             return list(user_reactions)
         return []
+
+
+class AchievementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Achievement
+        fields = ['id', 'name', 'description', 'icon', 'difficulty', 'points']
+
+
+class UserAchievementSerializer(serializers.ModelSerializer):
+    achievement = AchievementSerializer(read_only=True)
+
+    class Meta:
+        model = UserAchievement
+        fields = ['id', 'achievement', 'unlocked_at']

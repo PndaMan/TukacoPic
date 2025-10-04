@@ -139,7 +139,7 @@ const ProfilePage = () => {
 
         {/* Profile Info */}
         <div className="p-6 relative">
-          <div className="flex flex-col sm:flex-row items-center sm:items-end -mt-20 sm:-mt-24 mb-4">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end -mt-16 sm:-mt-20 mb-6">
             {/* Profile Picture */}
             <div className="relative mb-4 sm:mb-0 sm:mr-6">
               <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-white bg-gray-200 overflow-hidden">
@@ -217,6 +217,23 @@ const ProfilePage = () => {
             </div>
           )}
 
+          {/* Voting Streak */}
+          {profile?.current_voting_streak > 0 && (
+            <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🔥</span>
+                <div>
+                  <div className="font-bold text-orange-600 text-lg">
+                    {profile.current_voting_streak} Day Voting Streak!
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Longest streak: {profile.longest_voting_streak} days
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Bio */}
           <div className="mt-6">
             <div className="flex justify-between items-center mb-2">
@@ -263,6 +280,48 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Achievements */}
+      {profile?.achievements && profile.achievements.length > 0 && (
+        <div className="card mb-6">
+          <div className="p-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Achievements</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {profile.achievements.map((userAchievement) => {
+                const achievement = userAchievement.achievement;
+                const difficultyColors = {
+                  easy: 'bg-green-50 border-green-200',
+                  medium: 'bg-blue-50 border-blue-200',
+                  hard: 'bg-purple-50 border-purple-200',
+                  legendary: 'bg-yellow-50 border-yellow-200'
+                };
+
+                return (
+                  <div
+                    key={userAchievement.id}
+                    className={`p-4 rounded-lg border ${difficultyColors[achievement.difficulty]}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-3xl">{achievement.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-800 truncate">
+                          {achievement.name}
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {achievement.description}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {achievement.points} points • {achievement.difficulty}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

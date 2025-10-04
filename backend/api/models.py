@@ -2,6 +2,7 @@ from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from datetime import date, timedelta
 import math
 
 
@@ -77,6 +78,12 @@ class UserProfile(models.Model):
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
     banner_image = models.ImageField(upload_to='banners/', null=True, blank=True)
     bio = models.TextField(max_length=500, blank=True)
+
+    # Streak tracking
+    current_voting_streak = models.IntegerField(default=0)
+    longest_voting_streak = models.IntegerField(default=0)
+    last_vote_date = models.DateField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -120,6 +127,29 @@ class UserProfile(models.Model):
             return {"current": "TukacoPic Noob", "next": "Tuka-Spotter", "progress": (photo_count - 5) / 5 * 100, "photos_needed": 10 - photo_count}
         else:
             return {"current": None, "next": "TukacoPic Noob", "progress": photo_count / 5 * 100, "photos_needed": 5 - photo_count}
+
+    def update_voting_streak(self):
+        """Update voting streak when user casts a vote"""
+        today = date.today()
+
+        if self.last_vote_date is None:
+            # First ever vote
+            self.current_voting_streak = 1
+            self.longest_voting_streak = 1
+        elif self.last_vote_date == today:
+            # Already voted today, no change
+            return
+        elif self.last_vote_date == today - timedelta(days=1):
+            # Voted yesterday, continue streak
+            self.current_voting_streak += 1
+            if self.current_voting_streak > self.longest_voting_streak:
+                self.longest_voting_streak = self.current_voting_streak
+        else:
+            # Streak broken, start over
+            self.current_voting_streak = 1
+
+        self.last_vote_date = today
+        self.save()
 
 
 class Friendship(models.Model):
@@ -184,6 +214,42 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.user.username} {self.get_reaction_type_display()} on Photo {self.photo.id}"
+
+
+class Achievement(models.Model):
+    """Predefined achievements users can unlock"""
+    DIFFICULTY_CHOICES = [
+        ('easy', 'Easy'),
+        ('medium', 'Medium'),
+        ('hard', 'Hard'),
+        ('legendary', 'Legendary'),
+    ]
+
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(max_length=500)
+    icon = models.CharField(max_length=10)  # Emoji icon
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)
+    points = models.IntegerField(default=10)
+
+    class Meta:
+        ordering = ['difficulty', 'name']
+
+    def __str__(self):
+        return f"{self.icon} {self.name}"
+
+
+class UserAchievement(models.Model):
+    """Track which achievements a user has unlocked"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='achievements')
+    achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE)
+    unlocked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'achievement']
+        ordering = ['-unlocked_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.achievement.name}"
 
 
 @receiver(post_save, sender=User)
