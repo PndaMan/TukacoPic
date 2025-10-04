@@ -32,11 +32,17 @@ class UserSerializer(serializers.ModelSerializer):
 
 class PhotoSerializer(serializers.ModelSerializer):
     uploader = UserSerializer(read_only=True)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Photo
         fields = ['id', 'uploader', 'image', 'elo_score', 'created_at']
         read_only_fields = ['id', 'uploader', 'elo_score', 'created_at']
+
+    def get_image(self, obj):
+        if obj.image:
+            return f"https://apitukacopic.aether-lab.xyz{obj.image.url}"
+        return None
 
     def create(self, validated_data):
         validated_data['uploader'] = self.context['request'].user
@@ -94,10 +100,16 @@ class BulkPhotoUploadSerializer(serializers.Serializer):
 
 class PhotoPairSerializer(serializers.ModelSerializer):
     uploader = UserSerializer(read_only=True)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Photo
         fields = ['id', 'uploader', 'image', 'elo_score']
+
+    def get_image(self, obj):
+        if obj.image:
+            return f"https://apitukacopic.aether-lab.xyz{obj.image.url}"
+        return None
 
 
 class VoteSerializer(serializers.ModelSerializer):
@@ -147,7 +159,13 @@ class LeaderboardSerializer(serializers.ModelSerializer):
     uploader = UserSerializer(read_only=True)
     wins_count = serializers.IntegerField(read_only=True)
     losses_count = serializers.IntegerField(read_only=True)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Photo
         fields = ['id', 'uploader', 'image', 'elo_score', 'created_at', 'wins_count', 'losses_count']
+
+    def get_image(self, obj):
+        if obj.image:
+            return f"https://apitukacopic.aether-lab.xyz{obj.image.url}"
+        return None

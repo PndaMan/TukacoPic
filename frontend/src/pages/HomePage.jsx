@@ -129,7 +129,7 @@ const HomePage = () => {
             <div className="card overflow-hidden">
               <div className="aspect-square relative group">
                 <img
-                  src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000'}${photo.image}`}
+                  src={photo.image}
                   alt={`Photo by ${photo.uploader.username}`}
                   className="w-full h-full object-cover"
                 />
