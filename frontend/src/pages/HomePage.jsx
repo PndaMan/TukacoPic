@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 
 const HomePage = () => {
@@ -6,6 +6,7 @@ const HomePage = () => {
   const [loading, setLoading] = useState(false);
   const [voted, setVoted] = useState(false);
   const [message, setMessage] = useState('');
+  const hasFetchedRef = useRef(false);
 
   const fetchPhotoPair = async () => {
     try {
@@ -50,7 +51,10 @@ const HomePage = () => {
   };
 
   useEffect(() => {
-    fetchPhotoPair();
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchPhotoPair();
+    }
   }, []);
 
   if (loading && !voted) {
