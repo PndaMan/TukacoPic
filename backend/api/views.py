@@ -158,7 +158,7 @@ class UserRegistrationView(generics.CreateAPIView):
 @permission_classes([IsAuthenticated])
 def get_photo_pair(request):
     """Get two random photos for voting that haven't been voted on by anyone"""
-    photos = Photo.objects.all()
+    photos = Photo.objects.select_related('uploader').all()
 
     if photos.count() < 2:
         return Response(
@@ -167,7 +167,7 @@ def get_photo_pair(request):
         )
 
     # Get ALL photo pairs that have been voted on by ANYONE
-    all_votes = Vote.objects.all()
+    all_votes = Vote.objects.select_related('winner', 'loser').only('winner_id', 'loser_id').all()
     voted_pairs = set()
 
     for vote in all_votes:
@@ -240,7 +240,7 @@ class LeaderboardView(generics.ListAPIView):
     pagination_class = None  # Disable pagination for leaderboard
 
     def get_queryset(self):
-        return Photo.objects.annotate(
+        return Photo.objects.select_related('uploader').annotate(
             wins_count=Count('wins'),
             losses_count=Count('losses')
         ).order_by('-elo_score', '-created_at')[:100]  # Top 100 photos
@@ -727,7 +727,7 @@ from datetime import date
 @permission_classes([AllowAny])
 def tukacodle_start(request):
     """Start a new Tukacodle game - get two random photos"""
-    photos = Photo.objects.all()
+    photos = Photo.objects.select_related('uploader').all()
 
     if photos.count() < 2:
         return Response({'error': 'Not enough photos for Tukacodle'}, status=status.HTTP_400_BAD_REQUEST)

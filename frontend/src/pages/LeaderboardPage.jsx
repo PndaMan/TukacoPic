@@ -104,6 +104,7 @@ const LeaderboardPage = () => {
                     src={photo.image}
                     alt={`Photo by ${photo.uploader.username}`}
                     className="w-full h-full object-cover"
+                    loading={index < 10 ? "eager" : "lazy"}
                     onError={(e) => {
                       console.error('Image failed to load:', photo.image);
                     }}

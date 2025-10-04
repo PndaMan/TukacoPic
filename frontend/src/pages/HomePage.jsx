@@ -131,6 +131,8 @@ const HomePage = () => {
                   src={photo.image}
                   alt={`Photo by ${photo.uploader.username}`}
                   className="w-full h-full object-cover"
+                  loading="eager"
+                  fetchpriority="high"
                 />
                 {!voted && !loading && (
                   <button
