@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message
 
 
 @admin.register(Photo)
@@ -56,3 +56,23 @@ class UserAchievementAdmin(admin.ModelAdmin):
     list_filter = ['achievement', 'unlocked_at']
     search_fields = ['user__username', 'achievement__name']
     readonly_fields = ['unlocked_at']
+
+
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    list_display = ['id', 'participant1', 'participant2', 'created_at', 'updated_at']
+    list_filter = ['created_at', 'updated_at']
+    search_fields = ['participant1__username', 'participant2__username']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'conversation', 'sender', 'content_preview', 'is_read', 'created_at']
+    list_filter = ['is_read', 'created_at']
+    search_fields = ['sender__username', 'content']
+    readonly_fields = ['created_at']
+
+    def content_preview(self, obj):
+        return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
+    content_preview.short_description = 'Content'

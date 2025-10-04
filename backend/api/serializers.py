@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -334,3 +334,42 @@ class UserAchievementSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAchievement
         fields = ['id', 'achievement', 'unlocked_at']
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = PublicUserSerializer(read_only=True)
+
+    class Meta:
+        model = Message
+        fields = ['id', 'conversation', 'sender', 'content', 'is_read', 'created_at']
+        read_only_fields = ['id', 'sender', 'created_at']
+
+
+class ConversationSerializer(serializers.ModelSerializer):
+    other_user = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Conversation
+        fields = ['id', 'other_user', 'last_message', 'unread_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_other_user(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            other_user = obj.get_other_user(request.user)
+            return PublicUserSerializer(other_user).data
+        return None
+
+    def get_last_message(self, obj):
+        last_message = obj.messages.last()
+        if last_message:
+            return MessageSerializer(last_message).data
+        return None
+
+    def get_unread_count(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.messages.filter(is_read=False).exclude(sender=request.user).count()
+        return 0

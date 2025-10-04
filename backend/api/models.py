@@ -252,6 +252,59 @@ class UserAchievement(models.Model):
         return f"{self.user.username} - {self.achievement.name}"
 
 
+class Conversation(models.Model):
+    """Direct message conversation between two users"""
+    participant1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations_as_participant1')
+    participant2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations_as_participant2')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+        # Ensure unique conversation between two users (regardless of order)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['participant1', 'participant2'],
+                name='unique_conversation'
+            )
+        ]
+
+    def __str__(self):
+        return f"Conversation between {self.participant1.username} and {self.participant2.username}"
+
+    def get_other_user(self, user):
+        """Get the other participant in the conversation"""
+        return self.participant2 if self.participant1 == user else self.participant1
+
+    @staticmethod
+    def get_or_create_conversation(user1, user2):
+        """Get or create a conversation between two users"""
+        # Ensure consistent ordering to avoid duplicates
+        if user1.id > user2.id:
+            user1, user2 = user2, user1
+
+        conversation, created = Conversation.objects.get_or_create(
+            participant1=user1,
+            participant2=user2
+        )
+        return conversation
+
+
+class Message(models.Model):
+    """Direct message in a conversation"""
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
+    content = models.TextField(max_length=1000)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Message from {self.sender.username} at {self.created_at}"
+
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     """Automatically create a UserProfile when a User is created"""

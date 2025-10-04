@@ -160,9 +160,9 @@ const PublicProfilePage = () => {
                 Member since {new Date(profile?.user?.date_joined).toLocaleDateString()}
               </p>
 
-              {/* Friend Button */}
+              {/* Friend and Message Buttons */}
               {currentUser && (
-                <div className="mt-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {friendshipStatus === 'friends' ? (
                     <button
                       onClick={handleUnfriend}
@@ -190,6 +190,12 @@ const PublicProfilePage = () => {
                       {sendingRequest ? 'Sending...' : '+ Add Friend'}
                     </button>
                   )}
+                  <button
+                    onClick={() => navigate(`/messages/${userId}`)}
+                    className="btn-primary text-sm"
+                  >
+                    💬 Message
+                  </button>
                 </div>
               )}
             </div>

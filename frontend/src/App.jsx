@@ -10,6 +10,7 @@ import ProfilePage from './pages/ProfilePage';
 import UploadPage from './pages/UploadPage';
 import PublicProfilePage from './pages/PublicProfilePage';
 import FriendsPage from './pages/FriendsPage';
+import MessagesPage from './pages/MessagesPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -59,6 +60,16 @@ function App() {
           <Route path="/friends" element={
             <ProtectedRoute>
               <FriendsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/messages" element={
+            <ProtectedRoute>
+              <MessagesPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/messages/:userId" element={
+            <ProtectedRoute>
+              <MessagesPage />
             </ProtectedRoute>
           } />
           <Route path="/users/:userId" element={<PublicProfilePage />} />

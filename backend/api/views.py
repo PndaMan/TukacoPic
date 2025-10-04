@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.db.models import Count, Avg, Q
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message
 from .serializers import (
     UserRegistrationSerializer,
     PhotoSerializer,
@@ -22,7 +22,9 @@ from .serializers import (
     FriendshipSerializer,
     FriendRequestSerializer,
     ReactionSerializer,
-    PhotoWithReactionsSerializer
+    PhotoWithReactionsSerializer,
+    ConversationSerializer,
+    MessageSerializer
 )
 import random
 from django.db import models
@@ -587,3 +589,73 @@ def photo_reactions(request, photo_id):
     photo = get_object_or_404(Photo, id=photo_id)
     serializer = PhotoWithReactionsSerializer(photo, context={'request': request})
     return Response(serializer.data)
+
+
+# Messaging endpoints
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def conversations(request):
+    """Get all conversations for the current user"""
+    user = request.user
+
+    # Get conversations where user is either participant
+    user_conversations = Conversation.objects.filter(
+        models.Q(participant1=user) | models.Q(participant2=user)
+    ).prefetch_related('messages')
+
+    serializer = ConversationSerializer(user_conversations, many=True, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def conversation_messages(request, user_id):
+    """Get or create conversation with a user and return messages"""
+    other_user = get_object_or_404(User, id=user_id)
+
+    if other_user == request.user:
+        return Response({'error': 'Cannot message yourself'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get or create conversation
+    conversation = Conversation.get_or_create_conversation(request.user, other_user)
+
+    if request.method == 'GET':
+        # Return all messages in the conversation
+        messages = conversation.messages.all()
+        serializer = MessageSerializer(messages, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        # Send a new message
+        content = request.data.get('content', '').strip()
+
+        if not content:
+            return Response({'error': 'Message content is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(content) > 1000:
+            return Response({'error': 'Message too long. Maximum 1000 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        message = Message.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            content=content
+        )
+
+        serializer = MessageSerializer(message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_messages_read(request, conversation_id):
+    """Mark all messages in a conversation as read"""
+    conversation = get_object_or_404(Conversation, id=conversation_id)
+
+    # Verify user is part of this conversation
+    if request.user not in [conversation.participant1, conversation.participant2]:
+        return Response({'error': 'You are not part of this conversation'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Mark all messages from the other user as read
+    conversation.messages.exclude(sender=request.user).update(is_read=True)
+
+    return Response({'message': 'Messages marked as read'})

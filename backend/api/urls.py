@@ -22,6 +22,10 @@ from .views import (
     add_reaction,
     remove_reaction,
     photo_reactions,
+    # Messaging endpoints
+    conversations,
+    conversation_messages,
+    mark_messages_read,
 )
 
 urlpatterns = [
@@ -58,4 +62,9 @@ urlpatterns = [
     path('photos/<int:photo_id>/reactions/', photo_reactions, name='photo_reactions'),
     path('photos/<int:photo_id>/react/', add_reaction, name='add_reaction'),
     path('photos/<int:photo_id>/unreact/', remove_reaction, name='remove_reaction'),
+
+    # Messaging endpoints
+    path('conversations/', conversations, name='conversations'),
+    path('conversations/<int:user_id>/', conversation_messages, name='conversation_messages'),
+    path('conversations/<int:conversation_id>/read/', mark_messages_read, name='mark_messages_read'),
 ]

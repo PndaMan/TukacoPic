@@ -58,6 +58,12 @@ const Layout = ({ children }) => {
                     Friends
                   </Link>
                   <Link
+                    to="/messages"
+                    className="text-gray-700 hover:text-primary font-medium transition duration-200"
+                  >
+                    Messages
+                  </Link>
+                  <Link
                     to="/profile"
                     className="text-gray-700 hover:text-primary font-medium transition duration-200"
                   >
@@ -160,6 +166,13 @@ const Layout = ({ children }) => {
                     className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
                   >
                     Friends
+                  </Link>
+                  <Link
+                    to="/messages"
+                    onClick={closeMobileMenu}
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
+                  >
+                    Messages
                   </Link>
                   <Link
                     to="/profile"
