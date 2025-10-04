@@ -8,6 +8,8 @@ import RegisterPage from './pages/RegisterPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ProfilePage from './pages/ProfilePage';
 import UploadPage from './pages/UploadPage';
+import PublicProfilePage from './pages/PublicProfilePage';
+import FriendsPage from './pages/FriendsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -35,7 +37,8 @@ function App() {
     <Router>
       <Layout>
         <Routes>
-          <Route path="/" element={
+          <Route path="/" element={<LeaderboardPage />} />
+          <Route path="/vote" element={
             <ProtectedRoute>
               <HomePage />
             </ProtectedRoute>
@@ -53,6 +56,12 @@ function App() {
               <UploadPage />
             </ProtectedRoute>
           } />
+          <Route path="/friends" element={
+            <ProtectedRoute>
+              <FriendsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/users/:userId" element={<PublicProfilePage />} />
         </Routes>
       </Layout>
     </Router>

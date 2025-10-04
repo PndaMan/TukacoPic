@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import useAuthStore from '../store/authStore';
+import ScrollToTop from './ScrollToTop';
 
 const Layout = ({ children }) => {
   const { isAuthenticated, user, logout } = useAuthStore();
@@ -39,7 +40,7 @@ const Layout = ({ children }) => {
               {isAuthenticated ? (
                 <>
                   <Link
-                    to="/"
+                    to="/vote"
                     className="text-gray-700 hover:text-primary font-medium transition duration-200"
                   >
                     Vote
@@ -49,6 +50,12 @@ const Layout = ({ children }) => {
                     className="text-gray-700 hover:text-primary font-medium transition duration-200"
                   >
                     Upload
+                  </Link>
+                  <Link
+                    to="/friends"
+                    className="text-gray-700 hover:text-primary font-medium transition duration-200"
+                  >
+                    Friends
                   </Link>
                   <Link
                     to="/profile"
@@ -134,7 +141,7 @@ const Layout = ({ children }) => {
               {isAuthenticated ? (
                 <>
                   <Link
-                    to="/"
+                    to="/vote"
                     onClick={closeMobileMenu}
                     className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
                   >
@@ -146,6 +153,13 @@ const Layout = ({ children }) => {
                     className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
                   >
                     Upload
+                  </Link>
+                  <Link
+                    to="/friends"
+                    onClick={closeMobileMenu}
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
+                  >
+                    Friends
                   </Link>
                   <Link
                     to="/profile"
@@ -190,6 +204,9 @@ const Layout = ({ children }) => {
       <main className="max-w-7xl mx-auto py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
         {children}
       </main>
+
+      {/* Scroll to Top Button */}
+      <ScrollToTop />
     </div>
   );
 };

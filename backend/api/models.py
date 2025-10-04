@@ -1,5 +1,7 @@
 from django.db import models, transaction
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 import math
 
 
@@ -67,3 +69,125 @@ class Vote(models.Model):
         loser_new = loser_rating + k_factor * (0 - expected_loser)
 
         return winner_new, loser_new
+
+
+class UserProfile(models.Model):
+    """Extended user profile with additional fields"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
+    banner_image = models.ImageField(upload_to='banners/', null=True, blank=True)
+    bio = models.TextField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s Profile"
+
+    def get_badge(self):
+        """Calculate badge based on number of photos uploaded"""
+        photo_count = self.user.uploaded_photos.count()
+
+        if photo_count >= 150:
+            return "King of the Kov"
+        elif photo_count >= 100:
+            return "Tucakovic Tracker"
+        elif photo_count >= 50:
+            return "The Tukarazzi"
+        elif photo_count >= 20:
+            return "Tukarazzi Intern"
+        elif photo_count >= 10:
+            return "Tuka-Spotter"
+        elif photo_count >= 5:
+            return "TukacoPic Noob"
+        else:
+            return None
+
+    def get_badge_progress(self):
+        """Get progress to next badge"""
+        photo_count = self.user.uploaded_photos.count()
+
+        if photo_count >= 150:
+            return {"current": "King of the Kov", "next": None, "progress": 100, "photos_needed": 0}
+        elif photo_count >= 100:
+            return {"current": "Tucakovic Tracker", "next": "King of the Kov", "progress": (photo_count - 100) / 50 * 100, "photos_needed": 150 - photo_count}
+        elif photo_count >= 50:
+            return {"current": "The Tukarazzi", "next": "Tucakovic Tracker", "progress": (photo_count - 50) / 50 * 100, "photos_needed": 100 - photo_count}
+        elif photo_count >= 20:
+            return {"current": "Tukarazzi Intern", "next": "The Tukarazzi", "progress": (photo_count - 20) / 30 * 100, "photos_needed": 50 - photo_count}
+        elif photo_count >= 10:
+            return {"current": "Tuka-Spotter", "next": "Tukarazzi Intern", "progress": (photo_count - 10) / 10 * 100, "photos_needed": 20 - photo_count}
+        elif photo_count >= 5:
+            return {"current": "TukacoPic Noob", "next": "Tuka-Spotter", "progress": (photo_count - 5) / 5 * 100, "photos_needed": 10 - photo_count}
+        else:
+            return {"current": None, "next": "TukacoPic Noob", "progress": photo_count / 5 * 100, "photos_needed": 5 - photo_count}
+
+
+class Friendship(models.Model):
+    """Friend relationship between users"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ]
+
+    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_friend_requests')
+    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_friend_requests')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['from_user', 'to_user']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.from_user.username} → {self.to_user.username} ({self.status})"
+
+    @staticmethod
+    def are_friends(user1, user2):
+        """Check if two users are friends"""
+        return Friendship.objects.filter(
+            models.Q(from_user=user1, to_user=user2, status='accepted') |
+            models.Q(from_user=user2, to_user=user1, status='accepted')
+        ).exists()
+
+    @staticmethod
+    def get_friends(user):
+        """Get all friends of a user"""
+        friends_as_from = Friendship.objects.filter(
+            from_user=user, status='accepted'
+        ).values_list('to_user', flat=True)
+
+        friends_as_to = Friendship.objects.filter(
+            to_user=user, status='accepted'
+        ).values_list('from_user', flat=True)
+
+        friend_ids = list(friends_as_from) + list(friends_as_to)
+        return User.objects.filter(id__in=friend_ids)
+
+
+class Reaction(models.Model):
+    """Reactions to photos (heart, fire, etc.)"""
+    REACTION_CHOICES = [
+        ('heart', '❤️'),
+        ('fire', '🔥'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reactions')
+    photo = models.ForeignKey(Photo, on_delete=models.CASCADE, related_name='reactions')
+    reaction_type = models.CharField(max_length=10, choices=REACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'photo', 'reaction_type']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} {self.get_reaction_type_display()} on Photo {self.photo.id}"
+
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """Automatically create a UserProfile when a User is created"""
+    if created:
+        UserProfile.objects.create(user=instance)

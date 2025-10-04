@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Photo, Vote
+from .models import Photo, Vote, UserProfile, Friendship, Reaction
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -169,3 +169,140 @@ class LeaderboardSerializer(serializers.ModelSerializer):
         if obj.image:
             return f"https://apitukacopic.aether-lab.xyz{obj.image.url}"
         return None
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    date_joined = serializers.DateTimeField(source='user.date_joined', read_only=True)
+    badge = serializers.SerializerMethodField()
+    badge_progress = serializers.SerializerMethodField()
+    profile_picture = serializers.SerializerMethodField()
+    banner_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserProfile
+        fields = ['id', 'username', 'email', 'date_joined', 'profile_picture', 'banner_image',
+                  'bio', 'badge', 'badge_progress', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_badge(self, obj):
+        return obj.get_badge()
+
+    def get_badge_progress(self, obj):
+        return obj.get_badge_progress()
+
+    def get_profile_picture(self, obj):
+        if obj.profile_picture:
+            return f"https://apitukacopic.aether-lab.xyz{obj.profile_picture.url}"
+        return None
+
+    def get_banner_image(self, obj):
+        if obj.banner_image:
+            return f"https://apitukacopic.aether-lab.xyz{obj.banner_image.url}"
+        return None
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ['profile_picture', 'banner_image', 'bio']
+
+    def validate_profile_picture(self, value):
+        if value and value.size > 10485760:  # 10MB
+            raise serializers.ValidationError("Profile picture too large. Maximum size is 10MB.")
+        return value
+
+    def validate_banner_image(self, value):
+        if value and value.size > 10485760:  # 10MB
+            raise serializers.ValidationError("Banner image too large. Maximum size is 10MB.")
+        return value
+
+
+class PublicUserSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+    banner_image = serializers.SerializerMethodField()
+    badge = serializers.SerializerMethodField()
+    bio = serializers.CharField(source='profile.bio', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'date_joined', 'profile_picture', 'banner_image', 'badge', 'bio']
+
+    def get_profile_picture(self, obj):
+        if hasattr(obj, 'profile') and obj.profile.profile_picture:
+            return f"https://apitukacopic.aether-lab.xyz{obj.profile.profile_picture.url}"
+        return None
+
+    def get_banner_image(self, obj):
+        if hasattr(obj, 'profile') and obj.profile.banner_image:
+            return f"https://apitukacopic.aether-lab.xyz{obj.profile.banner_image.url}"
+        return None
+
+    def get_badge(self, obj):
+        if hasattr(obj, 'profile'):
+            return obj.profile.get_badge()
+        return None
+
+
+class FriendshipSerializer(serializers.ModelSerializer):
+    from_user = PublicUserSerializer(read_only=True)
+    to_user = PublicUserSerializer(read_only=True)
+
+    class Meta:
+        model = Friendship
+        fields = ['id', 'from_user', 'to_user', 'status', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class FriendRequestSerializer(serializers.Serializer):
+    to_user_id = serializers.IntegerField()
+
+    def validate_to_user_id(self, value):
+        try:
+            User.objects.get(id=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User does not exist")
+        return value
+
+
+class ReactionSerializer(serializers.ModelSerializer):
+    user = PublicUserSerializer(read_only=True)
+
+    class Meta:
+        model = Reaction
+        fields = ['id', 'user', 'photo', 'reaction_type', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
+
+
+class PhotoWithReactionsSerializer(serializers.ModelSerializer):
+    uploader = PublicUserSerializer(read_only=True)
+    image = serializers.SerializerMethodField()
+    reactions = serializers.SerializerMethodField()
+    user_reaction = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Photo
+        fields = ['id', 'uploader', 'image', 'elo_score', 'created_at', 'reactions', 'user_reaction']
+
+    def get_image(self, obj):
+        if obj.image:
+            return f"https://apitukacopic.aether-lab.xyz{obj.image.url}"
+        return None
+
+    def get_reactions(self, obj):
+        """Get reaction counts grouped by type"""
+        reaction_counts = {}
+        for reaction in obj.reactions.all():
+            if reaction.reaction_type not in reaction_counts:
+                reaction_counts[reaction.reaction_type] = 0
+            reaction_counts[reaction.reaction_type] += 1
+        return reaction_counts
+
+    def get_user_reaction(self, obj):
+        """Get current user's reaction if any"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            user_reactions = obj.reactions.filter(user=request.user).values_list('reaction_type', flat=True)
+            return list(user_reactions)
+        return []

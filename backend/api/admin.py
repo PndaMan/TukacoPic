@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Photo, Vote
+from .models import Photo, Vote, UserProfile, Friendship, Reaction
 
 
 @admin.register(Photo)
@@ -18,3 +18,26 @@ class VoteAdmin(admin.ModelAdmin):
     search_fields = ['voter__username']
     readonly_fields = ['voted_at']
     ordering = ['-voted_at']
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'get_badge', 'created_at']
+    search_fields = ['user__username']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(Friendship)
+class FriendshipAdmin(admin.ModelAdmin):
+    list_display = ['id', 'from_user', 'to_user', 'status', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['from_user__username', 'to_user__username']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(Reaction)
+class ReactionAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'photo', 'reaction_type', 'created_at']
+    list_filter = ['reaction_type', 'created_at']
+    search_fields = ['user__username']
+    readonly_fields = ['created_at']

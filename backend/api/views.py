@@ -2,10 +2,12 @@ from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.models import User
-from django.db.models import Count, Avg
+from django.db.models import Count, Avg, Q
 from django.db import IntegrityError
-from .models import Photo, Vote
+from django.shortcuts import get_object_or_404
+from .models import Photo, Vote, UserProfile, Friendship, Reaction
 from .serializers import (
     UserRegistrationSerializer,
     PhotoSerializer,
@@ -13,7 +15,14 @@ from .serializers import (
     PhotoPairSerializer,
     VoteCreateSerializer,
     VoteSerializer,
-    LeaderboardSerializer
+    LeaderboardSerializer,
+    UserProfileSerializer,
+    UserProfileUpdateSerializer,
+    PublicUserSerializer,
+    FriendshipSerializer,
+    FriendRequestSerializer,
+    ReactionSerializer,
+    PhotoWithReactionsSerializer
 )
 import random
 
@@ -217,3 +226,252 @@ class UserPhotosView(generics.ListAPIView):
 
     def get_queryset(self):
         return Photo.objects.filter(uploader=self.request.user).order_by('-created_at')
+
+
+# ============= NEW USER PROFILE ENDPOINTS =============
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def current_user_profile(request):
+    """Get or update current user's profile"""
+    profile = request.user.profile
+
+    if request.method == 'GET':
+        serializer = UserProfileSerializer(profile)
+        return Response(serializer.data)
+
+    elif request.method == 'PATCH':
+        serializer = UserProfileUpdateSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            response_serializer = UserProfileSerializer(profile)
+            return Response(response_serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_user_profile(request, user_id):
+    """Get public profile of any user"""
+    user = get_object_or_404(User, id=user_id)
+
+    # Get user's stats
+    user_photos = Photo.objects.filter(uploader=user)
+    user_votes = Vote.objects.filter(voter=user)
+
+    # Get best performing photos (top 12 by Elo score)
+    best_photos = user_photos.order_by('-elo_score')[:12]
+
+    # Check if requesting user is friends with this user
+    is_friend = False
+    friendship_status = None
+    if request.user.is_authenticated:
+        is_friend = Friendship.are_friends(request.user, user)
+        # Check if there's a pending request
+        pending_request = Friendship.objects.filter(
+            Q(from_user=request.user, to_user=user, status='pending') |
+            Q(from_user=user, to_user=request.user, status='pending')
+        ).first()
+        if pending_request:
+            friendship_status = 'pending_from_me' if pending_request.from_user == request.user else 'pending_from_them'
+        elif is_friend:
+            friendship_status = 'friends'
+
+    return Response({
+        'user': PublicUserSerializer(user).data,
+        'stats': {
+            'photos_uploaded': user_photos.count(),
+            'votes_cast': user_votes.count(),
+            'total_elo': sum(photo.elo_score for photo in user_photos),
+            'average_elo': user_photos.aggregate(avg_elo=Avg('elo_score'))['avg_elo'] or 0
+        },
+        'best_photos': PhotoWithReactionsSerializer(best_photos, many=True, context={'request': request}).data,
+        'is_friend': is_friend,
+        'friendship_status': friendship_status
+    })
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def search_users(request):
+    """Search for users by username"""
+    query = request.GET.get('q', '')
+    if len(query) < 2:
+        return Response({'users': []})
+
+    users = User.objects.filter(username__icontains=query).select_related('profile')[:20]
+    return Response({'users': PublicUserSerializer(users, many=True).data})
+
+
+# ============= FRIEND SYSTEM ENDPOINTS =============
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_friend_request(request):
+    """Send a friend request to another user"""
+    serializer = FriendRequestSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    to_user_id = serializer.validated_data['to_user_id']
+    to_user = get_object_or_404(User, id=to_user_id)
+
+    # Can't send request to self
+    if to_user == request.user:
+        return Response({'error': 'Cannot send friend request to yourself'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if already friends
+    if Friendship.are_friends(request.user, to_user):
+        return Response({'error': 'Already friends'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if request already exists
+    existing = Friendship.objects.filter(
+        Q(from_user=request.user, to_user=to_user) |
+        Q(from_user=to_user, to_user=request.user)
+    ).first()
+
+    if existing:
+        if existing.status == 'pending':
+            return Response({'error': 'Friend request already pending'}, status=status.HTTP_400_BAD_REQUEST)
+        elif existing.status == 'rejected':
+            # Allow resend if previously rejected
+            existing.status = 'pending'
+            existing.from_user = request.user
+            existing.to_user = to_user
+            existing.save()
+            return Response(FriendshipSerializer(existing).data, status=status.HTTP_200_OK)
+
+    # Create new friend request
+    friendship = Friendship.objects.create(from_user=request.user, to_user=to_user)
+    return Response(FriendshipSerializer(friendship).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_friend_request(request, friendship_id):
+    """Accept a friend request"""
+    friendship = get_object_or_404(Friendship, id=friendship_id)
+
+    # Only the recipient can accept
+    if friendship.to_user != request.user:
+        return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+
+    if friendship.status != 'pending':
+        return Response({'error': 'Request is not pending'}, status=status.HTTP_400_BAD_REQUEST)
+
+    friendship.status = 'accepted'
+    friendship.save()
+
+    return Response(FriendshipSerializer(friendship).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reject_friend_request(request, friendship_id):
+    """Reject a friend request"""
+    friendship = get_object_or_404(Friendship, id=friendship_id)
+
+    # Only the recipient can reject
+    if friendship.to_user != request.user:
+        return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+
+    if friendship.status != 'pending':
+        return Response({'error': 'Request is not pending'}, status=status.HTTP_400_BAD_REQUEST)
+
+    friendship.status = 'rejected'
+    friendship.save()
+
+    return Response({'message': 'Friend request rejected'})
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def unfriend(request, user_id):
+    """Remove a friend"""
+    other_user = get_object_or_404(User, id=user_id)
+
+    friendship = Friendship.objects.filter(
+        Q(from_user=request.user, to_user=other_user, status='accepted') |
+        Q(from_user=other_user, to_user=request.user, status='accepted')
+    ).first()
+
+    if not friendship:
+        return Response({'error': 'Not friends'}, status=status.HTTP_400_BAD_REQUEST)
+
+    friendship.delete()
+    return Response({'message': 'Unfriended successfully'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_friends(request):
+    """Get current user's friends"""
+    friends = Friendship.get_friends(request.user)
+    return Response({'friends': PublicUserSerializer(friends, many=True).data})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def friend_requests(request):
+    """Get pending friend requests"""
+    # Requests sent to me
+    received = Friendship.objects.filter(to_user=request.user, status='pending')
+    # Requests I sent
+    sent = Friendship.objects.filter(from_user=request.user, status='pending')
+
+    return Response({
+        'received': FriendshipSerializer(received, many=True).data,
+        'sent': FriendshipSerializer(sent, many=True).data
+    })
+
+
+# ============= REACTION ENDPOINTS =============
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_reaction(request, photo_id):
+    """Add a reaction to a photo"""
+    photo = get_object_or_404(Photo, id=photo_id)
+    reaction_type = request.data.get('reaction_type')
+
+    if reaction_type not in ['heart', 'fire']:
+        return Response({'error': 'Invalid reaction type'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Create or get existing reaction
+    reaction, created = Reaction.objects.get_or_create(
+        user=request.user,
+        photo=photo,
+        reaction_type=reaction_type
+    )
+
+    if created:
+        return Response(ReactionSerializer(reaction).data, status=status.HTTP_201_CREATED)
+    else:
+        return Response({'message': 'Already reacted'}, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def remove_reaction(request, photo_id):
+    """Remove a reaction from a photo"""
+    photo = get_object_or_404(Photo, id=photo_id)
+    reaction_type = request.data.get('reaction_type')
+
+    if reaction_type not in ['heart', 'fire']:
+        return Response({'error': 'Invalid reaction type'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        reaction = Reaction.objects.get(user=request.user, photo=photo, reaction_type=reaction_type)
+        reaction.delete()
+        return Response({'message': 'Reaction removed'})
+    except Reaction.DoesNotExist:
+        return Response({'error': 'Reaction not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def photo_reactions(request, photo_id):
+    """Get all reactions for a photo"""
+    photo = get_object_or_404(Photo, id=photo_id)
+    serializer = PhotoWithReactionsSerializer(photo, context={'request': request})
+    return Response(serializer.data)
