@@ -121,7 +121,7 @@ const MessagesPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ height: 'calc(100vh - 120px)' }}>
         {/* Friends List - Hidden on mobile when friend is selected */}
-        <div className={`md:col-span-1 card overflow-y-auto ${selectedFriend ? 'hidden md:block' : 'block'}`}>
+        <div className={`card overflow-y-auto ${selectedFriend ? 'hidden md:block md:col-span-1' : 'block md:col-span-1'}`}>
           <div className="p-4 border-b border-gray-200">
             <h2 className="text-xl font-semibold">Messages</h2>
           </div>
@@ -180,7 +180,7 @@ const MessagesPage = () => {
         </div>
 
         {/* Messages Area - Hidden on mobile when no friend is selected */}
-        <div className={`md:col-span-2 card flex flex-col ${selectedFriend ? 'block' : 'hidden md:block'}`}>
+        <div className={`card flex flex-col ${selectedFriend ? 'block md:col-span-2' : 'hidden md:block md:col-span-2'}`}>
           {selectedFriend ? (
             <>
               {/* Header */}

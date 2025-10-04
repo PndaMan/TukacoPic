@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -373,3 +373,50 @@ class ConversationSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return obj.messages.filter(is_read=False).exclude(sender=request.user).count()
         return 0
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    user = PublicUserSerializer(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'photo', 'user', 'content', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
+
+
+class PhotoWithCommentsSerializer(serializers.ModelSerializer):
+    uploader = PublicUserSerializer(read_only=True)
+    image = serializers.SerializerMethodField()
+    reactions = serializers.SerializerMethodField()
+    user_reaction = serializers.SerializerMethodField()
+    comments = CommentSerializer(many=True, read_only=True)
+    comments_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Photo
+        fields = ['id', 'uploader', 'image', 'elo_score', 'created_at', 'reactions', 'user_reaction', 'comments', 'comments_count']
+
+    def get_image(self, obj):
+        if obj.image:
+            return f"https://apitukacopic.aether-lab.xyz{obj.image.url}"
+        return None
+
+    def get_reactions(self, obj):
+        """Get reaction counts grouped by type"""
+        reaction_counts = {}
+        for reaction in obj.reactions.all():
+            if reaction.reaction_type not in reaction_counts:
+                reaction_counts[reaction.reaction_type] = 0
+            reaction_counts[reaction.reaction_type] += 1
+        return reaction_counts
+
+    def get_user_reaction(self, obj):
+        """Get current user's reaction if any"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            user_reactions = obj.reactions.filter(user=request.user).values_list('reaction_type', flat=True)
+            return list(user_reactions)
+        return []
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()

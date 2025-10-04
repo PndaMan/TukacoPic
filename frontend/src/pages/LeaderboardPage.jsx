@@ -1,10 +1,23 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import PhotoModal from '../components/PhotoModal';
 
 const LeaderboardPage = () => {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedPhotoId, setSelectedPhotoId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handlePhotoClick = (photoId) => {
+    setSelectedPhotoId(photoId);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedPhotoId(null);
+  };
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -83,7 +96,10 @@ const LeaderboardPage = () => {
                 </div>
 
                 {/* Photo */}
-                <div className="aspect-square">
+                <div
+                  className="aspect-square cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => handlePhotoClick(photo.id)}
+                >
                   <img
                     src={photo.image}
                     alt={`Photo by ${photo.uploader.username}`}
@@ -119,6 +135,13 @@ const LeaderboardPage = () => {
           ))}
         </div>
       )}
+
+      {/* Photo Modal */}
+      <PhotoModal
+        photoId={selectedPhotoId}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 };

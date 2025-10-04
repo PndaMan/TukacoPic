@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment
 
 
 @admin.register(Photo)
@@ -71,6 +71,18 @@ class MessageAdmin(admin.ModelAdmin):
     list_display = ['id', 'conversation', 'sender', 'content_preview', 'is_read', 'created_at']
     list_filter = ['is_read', 'created_at']
     search_fields = ['sender__username', 'content']
+    readonly_fields = ['created_at']
+
+    def content_preview(self, obj):
+        return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
+    content_preview.short_description = 'Content'
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'photo', 'content_preview', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['user__username', 'content']
     readonly_fields = ['created_at']
 
     def content_preview(self, obj):

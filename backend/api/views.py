@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.db.models import Count, Avg, Q
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment
 from .serializers import (
     UserRegistrationSerializer,
     PhotoSerializer,
@@ -24,7 +24,9 @@ from .serializers import (
     ReactionSerializer,
     PhotoWithReactionsSerializer,
     ConversationSerializer,
-    MessageSerializer
+    MessageSerializer,
+    CommentSerializer,
+    PhotoWithCommentsSerializer
 )
 import random
 from django.db import models
@@ -38,6 +40,7 @@ def check_and_unlock_achievements(user):
     friend_count = Friendship.get_friends(user).count()
     reaction_count = Reaction.objects.filter(user=user).count()
     reactions_received = Reaction.objects.filter(photo__uploader=user).count()
+    comment_count = Comment.objects.filter(user=user).count()
     streak = user.profile.current_voting_streak
     max_elo = Photo.objects.filter(uploader=user).aggregate(max_elo=models.Max('elo_score'))['max_elo'] or 0
     avg_elo = Photo.objects.filter(uploader=user).aggregate(avg_elo=Avg('elo_score'))['avg_elo'] or 0
@@ -61,6 +64,8 @@ def check_and_unlock_achievements(user):
         achievements_to_unlock.append('Social Starter')
     if reaction_count >= 1:
         achievements_to_unlock.append('Reactor')
+    if comment_count >= 1:
+        achievements_to_unlock.append('First Thoughts')
 
     # Medium achievements
     if vote_count >= 100:
@@ -75,6 +80,8 @@ def check_and_unlock_achievements(user):
         achievements_to_unlock.append('Photographer')
     if reaction_count >= 100:
         achievements_to_unlock.append('Generous')
+    if comment_count >= 25:
+        achievements_to_unlock.append('Chatterbox')
 
     # Hard achievements
     if vote_count >= 1000:
@@ -89,6 +96,8 @@ def check_and_unlock_achievements(user):
         achievements_to_unlock.append('Quality Creator')
     if friend_count >= 50:
         achievements_to_unlock.append('Friend to All')
+    if comment_count >= 100:
+        achievements_to_unlock.append('Photo Critic')
 
     # Legendary achievements
     if streak >= 100:
@@ -659,3 +668,52 @@ def mark_messages_read(request, conversation_id):
     conversation.messages.exclude(sender=request.user).update(is_read=True)
 
     return Response({'message': 'Messages marked as read'})
+
+
+# Comment endpoints
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def photo_detail(request, photo_id):
+    """Get photo details with comments and reactions"""
+    photo = get_object_or_404(Photo, id=photo_id)
+    serializer = PhotoWithCommentsSerializer(photo, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_comment(request, photo_id):
+    """Add a comment to a photo"""
+    photo = get_object_or_404(Photo, id=photo_id)
+    content = request.data.get('content', '').strip()
+
+    if not content:
+        return Response({'error': 'Comment content is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(content) > 500:
+        return Response({'error': 'Comment too long. Maximum 500 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    comment = Comment.objects.create(
+        photo=photo,
+        user=request.user,
+        content=content
+    )
+
+    # Check for comment achievements
+    check_and_unlock_achievements(request.user)
+
+    serializer = CommentSerializer(comment)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_comment(request, comment_id):
+    """Delete a comment (only by the comment author)"""
+    comment = get_object_or_404(Comment, id=comment_id)
+
+    if comment.user != request.user:
+        return Response({'error': 'You can only delete your own comments'}, status=status.HTTP_403_FORBIDDEN)
+
+    comment.delete()
+    return Response({'message': 'Comment deleted'})

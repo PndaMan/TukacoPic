@@ -26,6 +26,10 @@ from .views import (
     conversations,
     conversation_messages,
     mark_messages_read,
+    # Comment endpoints
+    photo_detail,
+    add_comment,
+    delete_comment,
 )
 
 urlpatterns = [
@@ -67,4 +71,9 @@ urlpatterns = [
     path('conversations/', conversations, name='conversations'),
     path('conversations/<int:user_id>/', conversation_messages, name='conversation_messages'),
     path('conversations/<int:conversation_id>/read/', mark_messages_read, name='mark_messages_read'),
+
+    # Comment endpoints
+    path('photos/<int:photo_id>/', photo_detail, name='photo_detail'),
+    path('photos/<int:photo_id>/comments/', add_comment, name='add_comment'),
+    path('comments/<int:comment_id>/', delete_comment, name='delete_comment'),
 ]

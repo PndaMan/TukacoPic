@@ -305,6 +305,20 @@ class Message(models.Model):
         return f"Message from {self.sender.username} at {self.created_at}"
 
 
+class Comment(models.Model):
+    """Comment on a photo"""
+    photo = models.ForeignKey(Photo, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
+    content = models.TextField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on Photo {self.photo.id}"
+
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     """Automatically create a UserProfile when a User is created"""

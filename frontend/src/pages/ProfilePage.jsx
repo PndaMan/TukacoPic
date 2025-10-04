@@ -171,7 +171,7 @@ const ProfilePage = () => {
             </div>
 
             {/* User Info */}
-            <div className="text-center sm:text-left flex-1">
+            <div className="text-center sm:text-left flex-1 mt-4 sm:mt-0">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
                 {profile?.username}
               </h1>
