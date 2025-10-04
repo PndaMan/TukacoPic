@@ -91,42 +91,42 @@ class UserProfile(models.Model):
         return f"{self.user.username}'s Profile"
 
     def get_badge(self):
-        """Calculate badge based on number of photos uploaded"""
-        photo_count = self.user.uploaded_photos.count()
+        """Calculate badge based on number of votes cast"""
+        vote_count = self.user.votes.count()
 
-        if photo_count >= 150:
+        if vote_count >= 3000:
             return "King of the Kov"
-        elif photo_count >= 100:
+        elif vote_count >= 1500:
             return "Tucakovic Tracker"
-        elif photo_count >= 50:
+        elif vote_count >= 750:
             return "The Tukarazzi"
-        elif photo_count >= 20:
+        elif vote_count >= 300:
             return "Tukarazzi Intern"
-        elif photo_count >= 10:
+        elif vote_count >= 150:
             return "Tuka-Spotter"
-        elif photo_count >= 5:
+        elif vote_count >= 50:
             return "TukacoPic Noob"
         else:
             return None
 
     def get_badge_progress(self):
         """Get progress to next badge"""
-        photo_count = self.user.uploaded_photos.count()
+        vote_count = self.user.votes.count()
 
-        if photo_count >= 150:
-            return {"current": "King of the Kov", "next": None, "progress": 100, "photos_needed": 0}
-        elif photo_count >= 100:
-            return {"current": "Tucakovic Tracker", "next": "King of the Kov", "progress": (photo_count - 100) / 50 * 100, "photos_needed": 150 - photo_count}
-        elif photo_count >= 50:
-            return {"current": "The Tukarazzi", "next": "Tucakovic Tracker", "progress": (photo_count - 50) / 50 * 100, "photos_needed": 100 - photo_count}
-        elif photo_count >= 20:
-            return {"current": "Tukarazzi Intern", "next": "The Tukarazzi", "progress": (photo_count - 20) / 30 * 100, "photos_needed": 50 - photo_count}
-        elif photo_count >= 10:
-            return {"current": "Tuka-Spotter", "next": "Tukarazzi Intern", "progress": (photo_count - 10) / 10 * 100, "photos_needed": 20 - photo_count}
-        elif photo_count >= 5:
-            return {"current": "TukacoPic Noob", "next": "Tuka-Spotter", "progress": (photo_count - 5) / 5 * 100, "photos_needed": 10 - photo_count}
+        if vote_count >= 3000:
+            return {"current": "King of the Kov", "next": None, "progress": 100, "votes_needed": 0}
+        elif vote_count >= 1500:
+            return {"current": "Tucakovic Tracker", "next": "King of the Kov", "progress": (vote_count - 1500) / 1500 * 100, "votes_needed": 3000 - vote_count}
+        elif vote_count >= 750:
+            return {"current": "The Tukarazzi", "next": "Tucakovic Tracker", "progress": (vote_count - 750) / 750 * 100, "votes_needed": 1500 - vote_count}
+        elif vote_count >= 300:
+            return {"current": "Tukarazzi Intern", "next": "The Tukarazzi", "progress": (vote_count - 300) / 450 * 100, "votes_needed": 750 - vote_count}
+        elif vote_count >= 150:
+            return {"current": "Tuka-Spotter", "next": "Tukarazzi Intern", "progress": (vote_count - 150) / 150 * 100, "votes_needed": 300 - vote_count}
+        elif vote_count >= 50:
+            return {"current": "TukacoPic Noob", "next": "Tuka-Spotter", "progress": (vote_count - 50) / 100 * 100, "votes_needed": 150 - vote_count}
         else:
-            return {"current": None, "next": "TukacoPic Noob", "progress": photo_count / 5 * 100, "photos_needed": 5 - photo_count}
+            return {"current": None, "next": "TukacoPic Noob", "progress": vote_count / 50 * 100, "votes_needed": 50 - vote_count}
 
     def update_voting_streak(self):
         """Update voting streak when user casts a vote"""
@@ -317,6 +317,21 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.user.username} on Photo {self.photo.id}"
+
+
+class TukacodleScore(models.Model):
+    """Daily Tukacodle game score"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tukacodle_scores')
+    score = models.IntegerField(default=0)  # Streak length when they lost
+    date = models.DateField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-score', 'created_at']
+        unique_together = ['user', 'date']  # One score per user per day
+
+    def __str__(self):
+        return f"{self.user.username} - Score: {self.score} on {self.date}"
 
 
 @receiver(post_save, sender=User)

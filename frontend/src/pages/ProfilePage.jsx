@@ -192,7 +192,7 @@ const ProfilePage = () => {
                 <div className="mt-3">
                   <div className="flex justify-between text-sm text-gray-600 mb-1">
                     <span>Progress to {badgeProgress.next}</span>
-                    <span>{badgeProgress.photos_needed} more photos needed</span>
+                    <span>{badgeProgress.votes_needed} more votes needed</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div

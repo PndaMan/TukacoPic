@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.db.models import Count, Avg, Q
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment, TukacodleScore
 from .serializers import (
     UserRegistrationSerializer,
     PhotoSerializer,
@@ -26,7 +26,8 @@ from .serializers import (
     ConversationSerializer,
     MessageSerializer,
     CommentSerializer,
-    PhotoWithCommentsSerializer
+    PhotoWithCommentsSerializer,
+    TukacodleScoreSerializer
 )
 import random
 from django.db import models
@@ -717,3 +718,120 @@ def delete_comment(request, comment_id):
 
     comment.delete()
     return Response({'message': 'Comment deleted'})
+
+
+# Tukacodle endpoints
+from datetime import date
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def tukacodle_start(request):
+    """Start a new Tukacodle game - get two random photos"""
+    photos = Photo.objects.all()
+
+    if photos.count() < 2:
+        return Response({'error': 'Not enough photos for Tukacodle'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get two random photos
+    random_photos = random.sample(list(photos), 2)
+    serializer = PhotoPairSerializer(random_photos, many=True)
+
+    return Response({
+        'photos': serializer.data
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def tukacodle_guess(request):
+    """
+    Submit a guess - check if correct
+    Request: { chosen_id, other_id, current_streak }
+    Returns: { correct: bool, next_photo?: Photo, game_over?: bool, final_score?: int }
+    """
+    chosen_id = request.data.get('chosen_id')
+    other_id = request.data.get('other_id')
+    current_streak = request.data.get('current_streak', 0)
+
+    if not chosen_id or not other_id:
+        return Response({'error': 'Both photo IDs required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        chosen_photo = Photo.objects.get(id=chosen_id)
+        other_photo = Photo.objects.get(id=other_id)
+    except Photo.DoesNotExist:
+        return Response({'error': 'Photo not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Check if guess was correct
+    correct = chosen_photo.elo_score >= other_photo.elo_score
+
+    if correct:
+        # Get a new random photo (excluding the winner)
+        photos = Photo.objects.exclude(id=chosen_id)
+        if photos.count() == 0:
+            return Response({
+                'correct': True,
+                'game_over': True,
+                'final_score': current_streak + 1,
+                'message': 'Congratulations! You\'ve compared all photos!'
+            })
+
+        next_photo = random.choice(photos)
+        serializer = PhotoPairSerializer(next_photo)
+
+        return Response({
+            'correct': True,
+            'next_photo': serializer.data,
+            'current_streak': current_streak + 1
+        })
+    else:
+        # Game over - save score if authenticated
+        final_score = current_streak
+
+        if request.user.is_authenticated:
+            # Save score for today
+            TukacodleScore.objects.update_or_create(
+                user=request.user,
+                date=date.today(),
+                defaults={'score': final_score}
+            )
+
+        return Response({
+            'correct': False,
+            'game_over': True,
+            'final_score': final_score,
+            'correct_answer': f"{chosen_photo.uploader.username}'s photo had {int(chosen_photo.elo_score)} ELO, while {other_photo.uploader.username}'s had {int(other_photo.elo_score)} ELO"
+        })
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def tukacodle_leaderboard(request):
+    """Get today's Tukacodle leaderboard"""
+    today = date.today()
+    scores = TukacodleScore.objects.filter(date=today).select_related('user__profile')
+    serializer = TukacodleScoreSerializer(scores, many=True)
+
+    return Response({
+        'date': today,
+        'scores': serializer.data
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def tukacodle_user_score(request):
+    """Check if user has played today and get their score"""
+    today = date.today()
+
+    try:
+        score = TukacodleScore.objects.get(user=request.user, date=today)
+        serializer = TukacodleScoreSerializer(score)
+        return Response({
+            'played_today': True,
+            'score': serializer.data
+        })
+    except TukacodleScore.DoesNotExist:
+        return Response({
+            'played_today': False
+        })

@@ -11,6 +11,7 @@ import UploadPage from './pages/UploadPage';
 import PublicProfilePage from './pages/PublicProfilePage';
 import FriendsPage from './pages/FriendsPage';
 import MessagesPage from './pages/MessagesPage';
+import TukacodlePage from './pages/TukacodlePage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -73,6 +74,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/users/:userId" element={<PublicProfilePage />} />
+          <Route path="/tukacodle" element={<TukacodlePage />} />
         </Routes>
       </Layout>
     </Router>

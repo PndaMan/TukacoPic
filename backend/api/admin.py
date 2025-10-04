@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment, TukacodleScore
 
 
 @admin.register(Photo)
@@ -88,3 +88,12 @@ class CommentAdmin(admin.ModelAdmin):
     def content_preview(self, obj):
         return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
     content_preview.short_description = 'Content'
+
+
+@admin.register(TukacodleScore)
+class TukacodleScoreAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'score', 'date', 'created_at']
+    list_filter = ['date']
+    search_fields = ['user__username']
+    readonly_fields = ['created_at', 'date']
+    ordering = ['-date', '-score']

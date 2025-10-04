@@ -36,6 +36,12 @@ const Layout = ({ children }) => {
               >
                 Leaderboard
               </Link>
+              <Link
+                to="/tukacodle"
+                className="text-gray-700 hover:text-primary font-medium transition duration-200"
+              >
+                Tukacodle
+              </Link>
 
               {isAuthenticated ? (
                 <>
@@ -142,6 +148,13 @@ const Layout = ({ children }) => {
                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
               >
                 Leaderboard
+              </Link>
+              <Link
+                to="/tukacodle"
+                onClick={closeMobileMenu}
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
+              >
+                Tukacodle
               </Link>
 
               {isAuthenticated ? (

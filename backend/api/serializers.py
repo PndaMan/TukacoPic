@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment
+from .models import Photo, Vote, UserProfile, Friendship, Reaction, Achievement, UserAchievement, Conversation, Message, Comment, TukacodleScore
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -180,12 +180,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
     profile_picture = serializers.SerializerMethodField()
     banner_image = serializers.SerializerMethodField()
     achievements = serializers.SerializerMethodField()
+    stats = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
         fields = ['id', 'username', 'email', 'date_joined', 'profile_picture', 'banner_image',
                   'bio', 'badge', 'badge_progress', 'current_voting_streak', 'longest_voting_streak',
-                  'achievements', 'created_at', 'updated_at']
+                  'achievements', 'stats', 'created_at', 'updated_at']
         read_only_fields = ['id', 'current_voting_streak', 'longest_voting_streak', 'created_at', 'updated_at']
 
     def get_badge(self, obj):
@@ -207,6 +208,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_achievements(self, obj):
         user_achievements = UserAchievement.objects.filter(user=obj.user).select_related('achievement')
         return UserAchievementSerializer(user_achievements, many=True).data
+
+    def get_stats(self, obj):
+        from django.db.models import Avg, Sum
+
+        photos = obj.user.uploaded_photos.all()
+        votes_cast = obj.user.votes.count()
+
+        if photos.exists():
+            total_elo = photos.aggregate(total=Sum('elo_score'))['total'] or 0
+            average_elo = photos.aggregate(avg=Avg('elo_score'))['avg'] or 0
+        else:
+            total_elo = 0
+            average_elo = 0
+
+        return {
+            'votes_cast': votes_cast,
+            'total_elo': total_elo,
+            'average_elo': average_elo
+        }
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -233,11 +253,12 @@ class PublicUserSerializer(serializers.ModelSerializer):
     current_voting_streak = serializers.IntegerField(source='profile.current_voting_streak', read_only=True)
     longest_voting_streak = serializers.IntegerField(source='profile.longest_voting_streak', read_only=True)
     achievements = serializers.SerializerMethodField()
+    stats = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ['id', 'username', 'date_joined', 'profile_picture', 'banner_image', 'badge', 'bio',
-                  'current_voting_streak', 'longest_voting_streak', 'achievements']
+                  'current_voting_streak', 'longest_voting_streak', 'achievements', 'stats']
 
     def get_profile_picture(self, obj):
         if hasattr(obj, 'profile') and obj.profile.profile_picture:
@@ -257,6 +278,26 @@ class PublicUserSerializer(serializers.ModelSerializer):
     def get_achievements(self, obj):
         user_achievements = UserAchievement.objects.filter(user=obj).select_related('achievement')
         return UserAchievementSerializer(user_achievements, many=True).data
+
+    def get_stats(self, obj):
+        from django.db.models import Avg, Sum
+
+        photos = obj.uploaded_photos.all()
+        votes_cast = obj.votes.count()
+
+        if photos.exists():
+            total_elo = photos.aggregate(total=Sum('elo_score'))['total'] or 0
+            average_elo = photos.aggregate(avg=Avg('elo_score'))['avg'] or 0
+        else:
+            total_elo = 0
+            average_elo = 0
+
+        return {
+            'photos_uploaded': photos.count(),
+            'votes_cast': votes_cast,
+            'total_elo': total_elo,
+            'average_elo': average_elo
+        }
 
 
 class FriendshipSerializer(serializers.ModelSerializer):
@@ -420,3 +461,12 @@ class PhotoWithCommentsSerializer(serializers.ModelSerializer):
 
     def get_comments_count(self, obj):
         return obj.comments.count()
+
+
+class TukacodleScoreSerializer(serializers.ModelSerializer):
+    user = PublicUserSerializer(read_only=True)
+
+    class Meta:
+        model = TukacodleScore
+        fields = ['id', 'user', 'score', 'date', 'created_at']
+        read_only_fields = ['id', 'date', 'created_at']

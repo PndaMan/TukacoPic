@@ -30,6 +30,11 @@ from .views import (
     photo_detail,
     add_comment,
     delete_comment,
+    # Tukacodle endpoints
+    tukacodle_start,
+    tukacodle_guess,
+    tukacodle_leaderboard,
+    tukacodle_user_score,
 )
 
 urlpatterns = [
@@ -76,4 +81,10 @@ urlpatterns = [
     path('photos/<int:photo_id>/', photo_detail, name='photo_detail'),
     path('photos/<int:photo_id>/comments/', add_comment, name='add_comment'),
     path('comments/<int:comment_id>/', delete_comment, name='delete_comment'),
+
+    # Tukacodle endpoints
+    path('tukacodle/start/', tukacodle_start, name='tukacodle_start'),
+    path('tukacodle/guess/', tukacodle_guess, name='tukacodle_guess'),
+    path('tukacodle/leaderboard/', tukacodle_leaderboard, name='tukacodle_leaderboard'),
+    path('tukacodle/user-score/', tukacodle_user_score, name='tukacodle_user_score'),
 ]
