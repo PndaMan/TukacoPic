@@ -94,17 +94,17 @@ class UserProfile(models.Model):
         """Calculate badge based on number of votes cast"""
         vote_count = self.user.votes.count()
 
-        if vote_count >= 3000:
+        if vote_count >= 2000:
             return "King of the Kov"
-        elif vote_count >= 1500:
+        elif vote_count >= 1000:
             return "Tucakovic Tracker"
-        elif vote_count >= 750:
+        elif vote_count >= 500:
             return "The Tukarazzi"
-        elif vote_count >= 300:
+        elif vote_count >= 200:
             return "Tukarazzi Intern"
-        elif vote_count >= 150:
+        elif vote_count >= 100:
             return "Tuka-Spotter"
-        elif vote_count >= 50:
+        elif vote_count >= 30:
             return "TukacoPic Noob"
         else:
             return None
@@ -113,20 +113,20 @@ class UserProfile(models.Model):
         """Get progress to next badge"""
         vote_count = self.user.votes.count()
 
-        if vote_count >= 3000:
+        if vote_count >= 2000:
             return {"current": "King of the Kov", "next": None, "progress": 100, "votes_needed": 0}
-        elif vote_count >= 1500:
-            return {"current": "Tucakovic Tracker", "next": "King of the Kov", "progress": (vote_count - 1500) / 1500 * 100, "votes_needed": 3000 - vote_count}
-        elif vote_count >= 750:
-            return {"current": "The Tukarazzi", "next": "Tucakovic Tracker", "progress": (vote_count - 750) / 750 * 100, "votes_needed": 1500 - vote_count}
-        elif vote_count >= 300:
-            return {"current": "Tukarazzi Intern", "next": "The Tukarazzi", "progress": (vote_count - 300) / 450 * 100, "votes_needed": 750 - vote_count}
-        elif vote_count >= 150:
-            return {"current": "Tuka-Spotter", "next": "Tukarazzi Intern", "progress": (vote_count - 150) / 150 * 100, "votes_needed": 300 - vote_count}
-        elif vote_count >= 50:
-            return {"current": "TukacoPic Noob", "next": "Tuka-Spotter", "progress": (vote_count - 50) / 100 * 100, "votes_needed": 150 - vote_count}
+        elif vote_count >= 1000:
+            return {"current": "Tucakovic Tracker", "next": "King of the Kov", "progress": (vote_count - 1000) / 1000 * 100, "votes_needed": 2000 - vote_count}
+        elif vote_count >= 500:
+            return {"current": "The Tukarazzi", "next": "Tucakovic Tracker", "progress": (vote_count - 500) / 500 * 100, "votes_needed": 1000 - vote_count}
+        elif vote_count >= 200:
+            return {"current": "Tukarazzi Intern", "next": "The Tukarazzi", "progress": (vote_count - 200) / 300 * 100, "votes_needed": 500 - vote_count}
+        elif vote_count >= 100:
+            return {"current": "Tuka-Spotter", "next": "Tukarazzi Intern", "progress": (vote_count - 100) / 100 * 100, "votes_needed": 200 - vote_count}
+        elif vote_count >= 30:
+            return {"current": "TukacoPic Noob", "next": "Tuka-Spotter", "progress": (vote_count - 30) / 70 * 100, "votes_needed": 100 - vote_count}
         else:
-            return {"current": None, "next": "TukacoPic Noob", "progress": vote_count / 50 * 100, "votes_needed": 50 - vote_count}
+            return {"current": None, "next": "TukacoPic Noob", "progress": vote_count / 30 * 100, "votes_needed": 30 - vote_count}
 
     def update_voting_streak(self):
         """Update voting streak when user casts a vote"""
