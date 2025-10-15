@@ -230,6 +230,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             average_elo = 0
 
         return {
+            'photos_uploaded': photos.count(),
             'votes_cast': votes_cast,
             'total_elo': total_elo,
             'average_elo': average_elo

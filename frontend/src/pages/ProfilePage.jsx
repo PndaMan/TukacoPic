@@ -27,6 +27,9 @@ const ProfilePage = () => {
         api.get('/profile/me/'),
         api.get('/photos/my/')
       ]);
+      console.log('Profile data:', profileResponse.data);
+      console.log('Achievements:', profileResponse.data.achievements);
+      console.log('Achievements count:', profileResponse.data.achievements?.length);
       setProfile(profileResponse.data);
       setEditedBio(profileResponse.data.bio || '');
       setUserPhotos(photosResponse.data.results || photosResponse.data);
@@ -82,8 +85,8 @@ const ProfilePage = () => {
     const colors = {
       'King of the Kov': 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white',
       'Tucakovic Tracker': 'bg-gradient-to-r from-purple-500 to-purple-700 text-white',
-      'The Tukarazzi': 'bg-gradient-to-r from-blue-500 to-blue-700 text-white',
-      'Tukarazzi Intern': 'bg-gradient-to-r from-green-500 to-green-700 text-white',
+      'Tukacovic Devotee': 'bg-gradient-to-r from-blue-500 to-blue-700 text-white',
+      'Ivan\'s Advocate': 'bg-gradient-to-r from-green-500 to-green-700 text-white',
       'Tuka-Spotter': 'bg-gradient-to-r from-gray-500 to-gray-700 text-white',
       'TukacoPic Noob': 'bg-gradient-to-r from-orange-400 to-orange-600 text-white',
     };

@@ -59,60 +59,60 @@ def check_and_unlock_achievements(user):
 
     # Easy achievements
     if vote_count >= 1:
-        achievements_to_unlock.append('First Steps')
+        achievements_to_unlock.append('Ivan Initiate')
     if photo_count >= 1:
-        achievements_to_unlock.append('Newbie Uploader')
+        achievements_to_unlock.append('Photo Pioneer')
     if friend_count >= 1:
-        achievements_to_unlock.append('Social Starter')
+        achievements_to_unlock.append('Friendly Face')
     if reaction_count >= 1:
-        achievements_to_unlock.append('Reactor')
+        achievements_to_unlock.append('Heart Giver')
     if comment_count >= 1:
-        achievements_to_unlock.append('First Thoughts')
+        achievements_to_unlock.append('Commentator')
 
     # Medium achievements
-    if vote_count >= 100:
-        achievements_to_unlock.append('Century Voter')
-    if friend_count >= 10:
-        achievements_to_unlock.append('Social Butterfly')
-    if reactions_received >= 50:
-        achievements_to_unlock.append('Popular')
-    if streak >= 7:
-        achievements_to_unlock.append('Consistent')
-    if photo_count >= 50:
-        achievements_to_unlock.append('Photographer')
-    if reaction_count >= 100:
-        achievements_to_unlock.append('Generous')
-    if comment_count >= 25:
-        achievements_to_unlock.append('Chatterbox')
+    if vote_count >= 50:
+        achievements_to_unlock.append('Ivan Enthusiast')
+    if friend_count >= 5:
+        achievements_to_unlock.append('Popular Voter')
+    if reactions_received >= 25:
+        achievements_to_unlock.append('Rising Star')
+    if streak >= 3:
+        achievements_to_unlock.append('Daily Devotee')
+    if photo_count >= 10:
+        achievements_to_unlock.append('Photo Collector')
+    if reaction_count >= 50:
+        achievements_to_unlock.append('Love Spreader')
+    if comment_count >= 10:
+        achievements_to_unlock.append('Talkative Critic')
 
     # Hard achievements
-    if vote_count >= 1000:
-        achievements_to_unlock.append('Thousand Votes')
-    if streak >= 30:
-        achievements_to_unlock.append('Dedicated')
-    if max_reactions_on_photo >= 100:
-        achievements_to_unlock.append('Viral')
-    if max_elo >= 1500:
-        achievements_to_unlock.append('Elo Master')
-    if photo_count >= 25 and avg_elo > 1200:
-        achievements_to_unlock.append('Quality Creator')
-    if friend_count >= 50:
-        achievements_to_unlock.append('Friend to All')
-    if comment_count >= 100:
-        achievements_to_unlock.append('Photo Critic')
+    if vote_count >= 500:
+        achievements_to_unlock.append('Ivan Expert')
+    if streak >= 7:
+        achievements_to_unlock.append('Streak Master')
+    if max_reactions_on_photo >= 50:
+        achievements_to_unlock.append('Crowd Favorite')
+    if max_elo >= 1400:
+        achievements_to_unlock.append('ELO Champion')
+    if photo_count >= 15 and avg_elo >= 1200:
+        achievements_to_unlock.append('Quality Ivan Pics')
+    if friend_count >= 20:
+        achievements_to_unlock.append('Social Legend')
+    if comment_count >= 50:
+        achievements_to_unlock.append('Comment Connoisseur')
 
     # Legendary achievements
-    if streak >= 100:
-        achievements_to_unlock.append('Obsessed')
-    if vote_count >= 5000:
-        achievements_to_unlock.append('Vote Master')
-    if photo_count >= 200:
-        achievements_to_unlock.append('King of Content')
+    if streak >= 30:
+        achievements_to_unlock.append('TukacoPic Addict')
+    if vote_count >= 2000:
+        achievements_to_unlock.append('Ivan Connoisseur')
+    if photo_count >= 100:
+        achievements_to_unlock.append('Photo Library Master')
 
     # Check if user has earned all badges
     badge = user.profile.get_badge()
     if badge == 'King of the Kov':
-        achievements_to_unlock.append('Elite Collector')
+        achievements_to_unlock.append('King of the Kov')
 
     # Unlock achievements
     unlocked = []
@@ -304,13 +304,17 @@ def bulk_photo_upload(request):
         photos = serializer.save()
         skipped = getattr(serializer, 'skipped_files', [])
 
+        # Check and unlock achievements
+        unlocked = check_and_unlock_achievements(request.user)
+
         message = f'{len(photos)} photo(s) uploaded successfully'
         if skipped:
             message += f', {len(skipped)} duplicate(s) skipped'
 
         response_data = {
             'message': message,
-            'photos': PhotoSerializer(photos, many=True).data
+            'photos': PhotoSerializer(photos, many=True).data,
+            'unlocked_achievements': unlocked
         }
 
         if skipped:
@@ -351,6 +355,7 @@ class UserPhotosView(generics.ListAPIView):
     """Get current user's uploaded photos"""
     serializer_class = PhotoSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None  # Disable pagination to return all user photos
 
     def get_queryset(self):
         return Photo.objects.filter(uploader=self.request.user).order_by('-created_at')
@@ -739,8 +744,11 @@ from datetime import date
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def tukacodle_start(request):
-    """Start a new Tukacodle game - get two random photos"""
-    photos = Photo.objects.select_related('uploader').all()
+    """Start a new Tukacodle game - get two random photos (excluding top 20 by Elo)"""
+    # Get all photos and exclude top 20 by Elo to balance the game
+    all_photos = Photo.objects.select_related('uploader').all()
+    top_20_ids = all_photos.order_by('-elo_score')[:20].values_list('id', flat=True)
+    photos = all_photos.exclude(id__in=top_20_ids)
 
     if photos.count() < 2:
         return Response({'error': 'Not enough photos for Tukacodle'}, status=status.HTTP_400_BAD_REQUEST)
@@ -779,8 +787,11 @@ def tukacodle_guess(request):
     correct = chosen_photo.elo_score >= other_photo.elo_score
 
     if correct:
-        # Get a new random photo (excluding the winner)
-        photos = Photo.objects.exclude(id=chosen_id)
+        # Get a new random photo (excluding the winner and top 20 by Elo)
+        all_photos = Photo.objects.all()
+        top_20_ids = all_photos.order_by('-elo_score')[:20].values_list('id', flat=True)
+        photos = all_photos.exclude(id=chosen_id).exclude(id__in=top_20_ids)
+
         if photos.count() == 0:
             return Response({
                 'correct': True,
@@ -802,12 +813,18 @@ def tukacodle_guess(request):
         final_score = current_streak
 
         if request.user.is_authenticated:
-            # Save score for today
-            TukacodleScore.objects.update_or_create(
-                user=request.user,
-                date=date.today(),
-                defaults={'score': final_score}
-            )
+            # Get current attempt count for today
+            today = date.today()
+            attempts_today = TukacodleScore.objects.filter(user=request.user, date=today).count()
+
+            if attempts_today < 3:
+                # Save score for this attempt
+                TukacodleScore.objects.create(
+                    user=request.user,
+                    date=today,
+                    score=final_score,
+                    attempt_number=attempts_today + 1
+                )
 
         return Response({
             'correct': False,
@@ -820,10 +837,23 @@ def tukacodle_guess(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def tukacodle_leaderboard(request):
-    """Get today's Tukacodle leaderboard"""
+    """Get today's Tukacodle leaderboard - shows highest score per user"""
     today = date.today()
-    scores = TukacodleScore.objects.filter(date=today).select_related('user__profile')
-    serializer = TukacodleScoreSerializer(scores, many=True)
+
+    # Get all scores for today
+    all_scores = TukacodleScore.objects.filter(date=today).select_related('user__profile')
+
+    # Group by user and keep only highest score
+    user_best_scores = {}
+    for score in all_scores:
+        user_id = score.user.id
+        if user_id not in user_best_scores or score.score > user_best_scores[user_id].score:
+            user_best_scores[user_id] = score
+
+    # Convert to list and sort by score descending
+    best_scores = sorted(user_best_scores.values(), key=lambda x: (-x.score, x.created_at))
+
+    serializer = TukacodleScoreSerializer(best_scores, many=True)
 
     return Response({
         'date': today,
@@ -834,17 +864,29 @@ def tukacodle_leaderboard(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def tukacodle_user_score(request):
-    """Check if user has played today and get their score"""
+    """Check if user has played today and get their scores"""
     today = date.today()
 
-    try:
-        score = TukacodleScore.objects.get(user=request.user, date=today)
-        serializer = TukacodleScoreSerializer(score)
+    # Get all attempts for today
+    scores = TukacodleScore.objects.filter(user=request.user, date=today).order_by('-score')
+
+    if scores.exists():
+        attempts_used = scores.count()
+        attempts_remaining = 3 - attempts_used
+        highest_score = scores.first()
+
         return Response({
             'played_today': True,
-            'score': serializer.data
+            'attempts_used': attempts_used,
+            'attempts_remaining': attempts_remaining,
+            'can_play_again': attempts_remaining > 0,
+            'highest_score': highest_score.score,
+            'all_scores': [s.score for s in scores]
         })
-    except TukacodleScore.DoesNotExist:
+    else:
         return Response({
-            'played_today': False
+            'played_today': False,
+            'attempts_used': 0,
+            'attempts_remaining': 3,
+            'can_play_again': True
         })

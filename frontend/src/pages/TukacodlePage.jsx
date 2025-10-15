@@ -13,6 +13,11 @@ const TukacodlePage = () => {
   const [clickedPhoto, setClickedPhoto] = useState(null);
   const [showCorrectFeedback, setShowCorrectFeedback] = useState(false);
   const [correctAnswer, setCorrectAnswer] = useState('');
+  const [attemptsRemaining, setAttemptsRemaining] = useState(3);
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
+  const [allScores, setAllScores] = useState([]);
+  const [championPhotoId, setChampionPhotoId] = useState(null);
+  const [championWins, setChampionWins] = useState(0);
 
   useEffect(() => {
     checkUserStatus();
@@ -22,11 +27,23 @@ const TukacodlePage = () => {
     if (isAuthenticated) {
       try {
         const response = await api.get('/tukacodle/user-score/');
+        setAttemptsUsed(response.data.attempts_used);
+        setAttemptsRemaining(response.data.attempts_remaining);
+
         if (response.data.played_today) {
           setUserPlayedToday(true);
-          setFinalScore(response.data.score.score);
-          await fetchLeaderboard();
-          setGameState('leaderboard');
+          setFinalScore(response.data.highest_score);
+          setAllScores(response.data.all_scores || []);
+
+          if (response.data.can_play_again) {
+            // User has attempts remaining
+            await fetchLeaderboard();
+            setGameState('leaderboard');
+          } else {
+            // User has used all 3 attempts
+            await fetchLeaderboard();
+            setGameState('leaderboard');
+          }
         } else {
           startGame();
         }
@@ -44,6 +61,8 @@ const TukacodlePage = () => {
       const response = await api.post('/tukacodle/start/');
       setPhotos(response.data.photos);
       setCurrentStreak(0);
+      setChampionPhotoId(null);
+      setChampionWins(0);
       setGameState('playing');
     } catch (error) {
       console.error('Error starting game:', error);
@@ -66,28 +85,61 @@ const TukacodlePage = () => {
         setClickedPhoto(chosenPhoto.id);
         setShowCorrectFeedback(true);
 
-        setTimeout(() => {
+        setTimeout(async () => {
           if (response.data.game_over) {
             setFinalScore(response.data.final_score);
             setGameState('game_over');
           } else {
-            // Replace the losing photo with the new one
-            setPhotos([chosenPhoto, response.data.next_photo]);
+            // Track consecutive wins for the same photo
+            let newChampionWins = 1;
+            if (championPhotoId === chosenPhoto.id) {
+              newChampionWins = championWins + 1;
+            }
+
+            // If this photo has won 5 times in a row, replace it with a fresh set
+            if (newChampionWins >= 5) {
+              try {
+                const freshStart = await api.post('/tukacodle/start/');
+                setPhotos(freshStart.data.photos);
+                setChampionPhotoId(null);
+                setChampionWins(0);
+              } catch (error) {
+                console.error('Error getting fresh photos:', error);
+                // Fallback to normal behavior
+                setPhotos([chosenPhoto, response.data.next_photo]);
+                setChampionPhotoId(chosenPhoto.id);
+                setChampionWins(newChampionWins);
+              }
+            } else {
+              // Normal behavior: replace the losing photo with the new one
+              setPhotos([chosenPhoto, response.data.next_photo]);
+              setChampionPhotoId(chosenPhoto.id);
+              setChampionWins(newChampionWins);
+            }
+
             setCurrentStreak(response.data.current_streak);
             setShowCorrectFeedback(false);
           }
           setClickedPhoto(null);
         }, 800);
       } else {
-        // Wrong answer
+        // Wrong answer - reset champion tracking
         setClickedPhoto(chosenPhoto.id);
         setShowCorrectFeedback(false);
+        setChampionPhotoId(null);
+        setChampionWins(0);
 
-        setTimeout(() => {
+        setTimeout(async () => {
           setFinalScore(response.data.final_score);
           setCorrectAnswer(response.data.correct_answer);
           setGameState('game_over');
           if (isAuthenticated) {
+            // Refresh user status to get updated attempts
+            const statusResponse = await api.get('/tukacodle/user-score/');
+            setAttemptsUsed(statusResponse.data.attempts_used);
+            setAttemptsRemaining(statusResponse.data.attempts_remaining);
+            setAllScores(statusResponse.data.all_scores || []);
+
             setTimeout(() => {
               fetchLeaderboard();
               setGameState('leaderboard');
@@ -110,6 +162,38 @@ const TukacodlePage = () => {
     }
   };
 
+  const handleShare = async () => {
+    const shareText = `🎯 I scored ${finalScore} on today's Tukacodle! 🏆\n\nhttps://tukacopic.aether-lab.xyz`;
+
+    // Check if Web Share API is supported (iOS/Android)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Tukacodle Score',
+          text: shareText
+        });
+      } catch (error) {
+        // User cancelled or error occurred
+        if (error.name !== 'AbortError') {
+          console.error('Error sharing:', error);
+          fallbackCopyToClipboard(shareText);
+        }
+      }
+    } else {
+      // Fallback for desktop - copy to clipboard
+      fallbackCopyToClipboard(shareText);
+    }
+  };
+
+  const fallbackCopyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Score copied to clipboard! Share it with your friends!');
+    }).catch((error) => {
+      console.error('Failed to copy:', error);
+      alert('Could not copy to clipboard');
+    });
+  };
+
   if (gameState === 'loading') {
     return (
       <div className="flex justify-center items-center min-h-96">
@@ -128,8 +212,15 @@ const TukacodlePage = () => {
           <p className="text-lg text-gray-600 mb-4">
             Which photo has a higher ELO rating?
           </p>
-          <div className="inline-block bg-primary text-white px-6 py-3 rounded-full font-bold text-xl">
-            Current Streak: {currentStreak}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-2">
+            <div className="inline-block bg-primary text-white px-6 py-3 rounded-full font-bold text-xl">
+              Current Streak: {currentStreak}
+            </div>
+            {isAuthenticated && (
+              <div className="inline-block bg-gray-700 text-white px-6 py-3 rounded-full font-bold text-xl">
+                Attempts: {attemptsUsed}/3
+              </div>
+            )}
           </div>
         </div>
 
@@ -156,6 +247,16 @@ const TukacodlePage = () => {
                     loading="eager"
                     fetchpriority="high"
                   />
+
+                  {/* Champion Streak Badge */}
+                  {championPhotoId === photo.id && championWins > 0 && !clickedPhoto && (
+                    <div className="absolute top-3 right-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1.5 rounded-full font-bold text-sm shadow-lg flex items-center gap-1 animate-pulse">
+                      🔥 {championWins} {championWins === 1 ? 'Win' : 'Wins'}
+                      {championWins >= 4 && (
+                        <span className="ml-1 text-xs">(1 more to rotate!)</span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Hover Overlay */}
                   {!clickedPhoto && (
@@ -222,6 +323,15 @@ const TukacodlePage = () => {
 
           {isAuthenticated ? (
             <div>
+              <button
+                onClick={handleShare}
+                className="btn-primary mb-4 inline-flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share Your Score
+              </button>
               <p className="text-gray-600 mb-4">
                 Viewing leaderboard...
               </p>
@@ -229,6 +339,15 @@ const TukacodlePage = () => {
             </div>
           ) : (
             <div>
+              <button
+                onClick={handleShare}
+                className="btn-secondary mb-4 inline-flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share Your Score
+              </button>
               <p className="text-gray-600 mb-4">
                 Login to save your score and see the leaderboard!
               </p>
@@ -260,8 +379,42 @@ const TukacodlePage = () => {
         {/* User's Score */}
         {userPlayedToday && (
           <div className="card p-6 mb-6 bg-gradient-to-r from-primary to-blue-600 text-white">
-            <h2 className="text-2xl font-bold mb-2">Your Score Today</h2>
-            <div className="text-5xl font-bold">{finalScore}</div>
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Your Best Score Today</h2>
+                <div className="text-5xl font-bold">{finalScore}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm opacity-90">Attempts Used</div>
+                <div className="text-3xl font-bold">{attemptsUsed}/3</div>
+              </div>
+            </div>
+
+            {/* Share Button */}
+            <div className="mt-4">
+              <button
+                onClick={handleShare}
+                className="w-full bg-white text-primary hover:bg-gray-100 font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share Your Score
+              </button>
+            </div>
+
+            {allScores.length > 1 && (
+              <div className="mt-4 pt-4 border-t border-white/30">
+                <div className="text-sm opacity-90 mb-2">All Your Scores Today:</div>
+                <div className="flex gap-2 flex-wrap">
+                  {allScores.map((score, idx) => (
+                    <div key={idx} className="bg-white/20 px-3 py-1 rounded-full text-sm">
+                      Attempt {idx + 1}: {score}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -325,15 +478,39 @@ const TukacodlePage = () => {
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-gray-600 mb-4">
-            You've already played today! Come back tomorrow for a new challenge.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="btn-secondary"
-          >
-            Refresh Leaderboard
-          </button>
+          {attemptsRemaining > 0 ? (
+            <>
+              <p className="text-gray-600 mb-4">
+                You have {attemptsRemaining} {attemptsRemaining === 1 ? 'attempt' : 'attempts'} remaining today!
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={startGame}
+                  className="btn-primary"
+                >
+                  Play Again ({attemptsRemaining} left)
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="btn-secondary"
+                >
+                  Refresh Leaderboard
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-600 mb-4">
+                You've used all 3 attempts today! Come back tomorrow for a new challenge.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="btn-secondary"
+              >
+                Refresh Leaderboard
+              </button>
+            </>
+          )}
         </div>
       </div>
     );

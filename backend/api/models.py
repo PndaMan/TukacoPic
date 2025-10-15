@@ -100,9 +100,9 @@ class UserProfile(models.Model):
         elif vote_count >= 1000:
             return "Tucakovic Tracker"
         elif vote_count >= 500:
-            return "The Tukarazzi"
+            return "Tukacovic Devotee"
         elif vote_count >= 200:
-            return "Tukarazzi Intern"
+            return "Ivan's Advocate"
         elif vote_count >= 100:
             return "Tuka-Spotter"
         elif vote_count >= 30:
@@ -119,11 +119,11 @@ class UserProfile(models.Model):
         elif vote_count >= 1000:
             return {"current": "Tucakovic Tracker", "next": "King of the Kov", "progress": (vote_count - 1000) / 1000 * 100, "votes_needed": 2000 - vote_count}
         elif vote_count >= 500:
-            return {"current": "The Tukarazzi", "next": "Tucakovic Tracker", "progress": (vote_count - 500) / 500 * 100, "votes_needed": 1000 - vote_count}
+            return {"current": "Tukacovic Devotee", "next": "Tucakovic Tracker", "progress": (vote_count - 500) / 500 * 100, "votes_needed": 1000 - vote_count}
         elif vote_count >= 200:
-            return {"current": "Tukarazzi Intern", "next": "The Tukarazzi", "progress": (vote_count - 200) / 300 * 100, "votes_needed": 500 - vote_count}
+            return {"current": "Ivan's Advocate", "next": "Tukacovic Devotee", "progress": (vote_count - 200) / 300 * 100, "votes_needed": 500 - vote_count}
         elif vote_count >= 100:
-            return {"current": "Tuka-Spotter", "next": "Tukarazzi Intern", "progress": (vote_count - 100) / 100 * 100, "votes_needed": 200 - vote_count}
+            return {"current": "Tuka-Spotter", "next": "Ivan's Advocate", "progress": (vote_count - 100) / 100 * 100, "votes_needed": 200 - vote_count}
         elif vote_count >= 30:
             return {"current": "TukacoPic Noob", "next": "Tuka-Spotter", "progress": (vote_count - 30) / 70 * 100, "votes_needed": 100 - vote_count}
         else:
@@ -324,15 +324,16 @@ class TukacodleScore(models.Model):
     """Daily Tukacodle game score"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tukacodle_scores')
     score = models.IntegerField(default=0)  # Streak length when they lost
+    attempt_number = models.IntegerField(default=1)  # 1, 2, or 3
     date = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-date', '-score', 'created_at']
-        unique_together = ['user', 'date']  # One score per user per day
+        unique_together = ['user', 'date', 'attempt_number']  # Three attempts per user per day
 
     def __str__(self):
-        return f"{self.user.username} - Score: {self.score} on {self.date}"
+        return f"{self.user.username} - Score: {self.score} (Attempt {self.attempt_number}) on {self.date}"
 
 
 @receiver(post_save, sender=User)
