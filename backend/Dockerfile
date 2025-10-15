@@ -14,9 +14,10 @@ RUN addgroup --system django && adduser --system --group django
 # Install system dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        postgresql-client \
-        build-essential \
-        libpq-dev \
+       postgresql-client \
+       build-essential \
+       libpq-dev \
+       sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -44,9 +45,7 @@ RUN python manage.py collectstatic --noinput
 # Expose port
 EXPOSE 8000
 
-# --- SH INTEGRATION ---
-# Set the entrypoint script to be executed when the container starts
-# This will run migrations before starting the application.
+# Set the entrypoint to run migrations
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Command to run the application with gunicorn
