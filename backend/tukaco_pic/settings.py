@@ -190,6 +190,8 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 157286400  # 150MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 157286400  # 150MB
 
 # Tell Django to trust the 'X-Forwarded-Proto' header from our proxy (Cloudflare)
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Security settings
