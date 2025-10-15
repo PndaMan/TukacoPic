@@ -23,8 +23,11 @@ RUN apt-get update \
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
+# Copy project and entrypoint script
 COPY . /app/
+
+# Make the entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
 
 # Create directories for static and media files
 RUN mkdir -p /app/staticfiles /app/media
@@ -41,5 +44,11 @@ RUN python manage.py collectstatic --noinput
 # Expose port
 EXPOSE 8000
 
+# --- SH INTEGRATION ---
+# Set the entrypoint script to be executed when the container starts
+# This will run migrations before starting the application.
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 # Command to run the application with gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "tukaco_pic.wsgi:application"]
+
