@@ -9,8 +9,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including devDependencies like Vite)
+# This is the FIX: Changed from 'npm ci --only=production' to 'npm ci'
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -18,7 +19,7 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Production stage
+# --- Production stage ---
 FROM nginx:alpine
 
 # Copy built assets from build stage
