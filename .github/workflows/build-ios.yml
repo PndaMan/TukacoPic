@@ -159,7 +159,7 @@ jobs:
             exit 1
           fi
 
-      - name: Ad-hoc sign and package IPA
+      - name: Prepare and package IPA
         run: |
           APP_PATH=$(find ios/build -name "*.app" -type d | head -1)
           if [ -z "$APP_PATH" ]; then
@@ -169,49 +169,38 @@ jobs:
           fi
           echo "Found app at: $APP_PATH"
 
-          # Extract bundle identifier from Info.plist
-          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist")
-          echo "Bundle ID: $BUNDLE_ID"
-
-          # Create minimal entitlements for sideloading
-          cat > /tmp/entitlements.plist << 'ENTXML'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>com.apple.developer.team-identifier</key>
-            <string>SIDELOAD00</string>
-            <key>get-task-allow</key>
-            <true/>
-          </dict>
-          </plist>
-          ENTXML
-
-          # Sign each embedded framework individually first (--deep is unreliable)
-          if [ -d "$APP_PATH/Frameworks" ]; then
-            find "$APP_PATH/Frameworks" -name "*.framework" -o -name "*.dylib" | while read fw; do
-              echo "Signing framework: $fw"
-              codesign --force --sign - "$fw"
-            done
-          fi
-
-          # Sign any app extensions
-          find "$APP_PATH" -name "*.appex" -type d | while read ext; do
-            echo "Signing extension: $ext"
-            codesign --force --sign - "$ext"
+          # Convert ALL plist files to XML format so Sideloader's libplist can parse them
+          find "$APP_PATH" -name "*.plist" | while read plist; do
+            echo "Converting to XML: $plist"
+            plutil -convert xml1 "$plist" 2>/dev/null || true
           done
 
-          # Sign the main app with entitlements
-          codesign --force --sign - --entitlements /tmp/entitlements.plist "$APP_PATH"
-          echo "Ad-hoc signed successfully"
+          # Resolve any symlinks (ditto copies and flattens symlinks properly)
+          CLEAN_APP="/tmp/CleanApp/$(basename "$APP_PATH")"
+          mkdir -p /tmp/CleanApp
+          ditto "$APP_PATH" "$CLEAN_APP"
 
-          # Verify signature
-          codesign --verify --verbose "$APP_PATH" || echo "Warning: verification note (ad-hoc is expected)"
+          # Remove code signatures — sideloading tools re-sign from scratch
+          find "$CLEAN_APP" -name "_CodeSignature" -type d -exec rm -rf {} + 2>/dev/null || true
+          find "$CLEAN_APP" -name "CodeResources" -delete 2>/dev/null || true
+          find "$CLEAN_APP" -name "embedded.mobileprovision" -delete 2>/dev/null || true
 
-          mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
-          zip -r "$GITHUB_WORKSPACE/TukacoPic.ipa" Payload
-          rm -rf Payload
+          # Remove macOS resource fork metadata
+          find "$CLEAN_APP" -name "._*" -delete 2>/dev/null || true
+          find "$CLEAN_APP" -name ".DS_Store" -delete 2>/dev/null || true
+
+          # Build IPA with correct Payload/ structure
+          mkdir -p /tmp/IPA/Payload
+          cp -r "$CLEAN_APP" /tmp/IPA/Payload/
+          cd /tmp/IPA
+          # -X excludes extended attributes, -y stores symlinks as-is
+          zip -r -X "$GITHUB_WORKSPACE/TukacoPic.ipa" Payload
+
+          # Verify IPA structure
+          echo "=== IPA contents ==="
+          unzip -l "$GITHUB_WORKSPACE/TukacoPic.ipa" | head -30
+          echo "=== Info.plist check ==="
+          cat "/tmp/IPA/Payload/$(basename "$APP_PATH")/Info.plist" | head -5
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
