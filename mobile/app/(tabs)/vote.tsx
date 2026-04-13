@@ -16,14 +16,15 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  runOnJS,
+  FadeIn,
 } from 'react-native-reanimated';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/theme';
 import { MeshGradientBackground, GlassButton, getImageUrl } from '../../src/components';
 import api from '../../src/services/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PHOTO_SIZE = (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.md) / 2;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const PHOTO_WIDTH = SCREEN_WIDTH - Spacing.lg * 2;
+const PHOTO_HEIGHT = (SCREEN_HEIGHT - 280) / 2;
 
 export default function VoteScreen() {
   const insets = useSafeAreaInsets();
@@ -42,7 +43,6 @@ export default function VoteScreen() {
     try {
       const res = await api.get('/photos/pair/');
       const data = res.data;
-      // API returns { photos: [p1, p2] } — normalize to { photo1, photo2 }
       if (data.photos && Array.isArray(data.photos)) {
         return { photo1: data.photos[0], photo2: data.photos[1] };
       }
@@ -55,13 +55,21 @@ export default function VoteScreen() {
     }
   }, []);
 
+  const prefetchImages = (pair: any) => {
+    if (!pair) return;
+    Image.prefetch(getImageUrl(pair.photo1.image));
+    Image.prefetch(getImageUrl(pair.photo2.image));
+  };
+
   const loadPhotos = useCallback(async () => {
     setLoading(true);
     const pair = await fetchPair();
     if (pair) {
       setPhotos(pair);
-      // Preload next pair
-      fetchPair().then(setNextPhotos);
+      fetchPair().then((next) => {
+        setNextPhotos(next);
+        prefetchImages(next);
+      });
     }
     setLoading(false);
   }, []);
@@ -82,14 +90,13 @@ export default function VoteScreen() {
     setVoted(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-    // Animate the chosen photo
     if (isFirst) {
-      scale1.value = withSpring(1.05);
-      scale2.value = withTiming(0.9);
+      scale1.value = withSpring(1.03);
+      scale2.value = withTiming(0.95);
       opacity2.value = withTiming(0.4);
     } else {
-      scale2.value = withSpring(1.05);
-      scale1.value = withTiming(0.9);
+      scale2.value = withSpring(1.03);
+      scale1.value = withTiming(0.95);
       opacity1.value = withTiming(0.4);
     }
 
@@ -108,7 +115,10 @@ export default function VoteScreen() {
       if (nextPhotos) {
         setPhotos(nextPhotos);
         setNextPhotos(null);
-        fetchPair().then(setNextPhotos);
+        fetchPair().then((next) => {
+          setNextPhotos(next);
+          prefetchImages(next);
+        });
       } else {
         loadPhotos();
       }
@@ -122,7 +132,10 @@ export default function VoteScreen() {
     if (nextPhotos) {
       setPhotos(nextPhotos);
       setNextPhotos(null);
-      fetchPair().then(setNextPhotos);
+      fetchPair().then((next) => {
+        setNextPhotos(next);
+        prefetchImages(next);
+      });
     } else {
       loadPhotos();
     }
@@ -169,12 +182,14 @@ export default function VoteScreen() {
 
   return (
     <MeshGradientBackground variant="warm">
-      <View style={[styles.container, { paddingTop: insets.top + Spacing.lg }]}>
-        <Text style={styles.title}>Vote</Text>
-        <Text style={styles.subtitle}>Which photo is better?</Text>
+      <View style={[styles.container, { paddingTop: insets.top + Spacing.md }]}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Vote</Text>
+          <Text style={styles.subtitle}>Tap the better photo</Text>
+        </View>
 
-        <View style={styles.photosRow}>
-          <Animated.View style={animStyle1}>
+        <View style={styles.photosColumn}>
+          <Animated.View style={animStyle1} entering={FadeIn.duration(300)}>
             <Pressable
               onPress={() => handleVote(photos.photo1.id, true)}
               disabled={voted}
@@ -186,9 +201,12 @@ export default function VoteScreen() {
                   style={styles.photo}
                   contentFit="cover"
                   transition={200}
+                  cachePolicy="memory-disk"
+                  recyclingKey={`vote-1-${photos.photo1.id}`}
+                  placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                 />
                 <View style={styles.photoOverlay}>
-                  <BlurView intensity={50} tint="dark" style={styles.photoBlur}>
+                  <BlurView intensity={40} tint="dark" style={styles.photoBlur}>
                     <View style={styles.photoInfo}>
                       <Text style={styles.photoUser} numberOfLines={1}>
                         {photos.photo1.uploader?.username}
@@ -203,9 +221,7 @@ export default function VoteScreen() {
             </Pressable>
           </Animated.View>
 
-          <Text style={styles.vs}>VS</Text>
-
-          <Animated.View style={animStyle2}>
+          <Animated.View style={animStyle2} entering={FadeIn.duration(300).delay(100)}>
             <Pressable
               onPress={() => handleVote(photos.photo2.id, false)}
               disabled={voted}
@@ -217,9 +233,12 @@ export default function VoteScreen() {
                   style={styles.photo}
                   contentFit="cover"
                   transition={200}
+                  cachePolicy="memory-disk"
+                  recyclingKey={`vote-2-${photos.photo2.id}`}
+                  placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                 />
                 <View style={styles.photoOverlay}>
-                  <BlurView intensity={50} tint="dark" style={styles.photoBlur}>
+                  <BlurView intensity={40} tint="dark" style={styles.photoBlur}>
                     <View style={styles.photoInfo}>
                       <Text style={styles.photoUser} numberOfLines={1}>
                         {photos.photo2.uploader?.username}
@@ -235,12 +254,11 @@ export default function VoteScreen() {
           </Animated.View>
         </View>
 
-        <GlassButton
-          title="Skip"
-          onPress={handleSkip}
-          variant="glass"
-          style={styles.skipBtn}
-        />
+        <Pressable onPress={handleSkip} style={styles.skipBtn}>
+          <BlurView intensity={30} tint="light" style={styles.skipBlur}>
+            <Text style={styles.skipText}>Skip</Text>
+          </BlurView>
+        </Pressable>
       </View>
     </MeshGradientBackground>
   );
@@ -256,6 +274,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  header: {
+    marginBottom: Spacing.md,
+  },
   title: {
     ...Typography.largeTitle,
     color: Colors.text.primary,
@@ -264,26 +285,23 @@ const styles = StyleSheet.create({
     ...Typography.subheadline,
     color: Colors.text.secondary,
     marginTop: Spacing.xs,
-    marginBottom: Spacing.xl,
   },
-  photosRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
+  photosColumn: {
     flex: 1,
-  },
-  vs: {
-    ...Typography.title2,
-    color: Colors.text.secondary,
-    fontWeight: '800',
+    justifyContent: 'center',
+    gap: Spacing.md,
   },
   photoCard: {
-    width: PHOTO_SIZE,
-    height: PHOTO_SIZE * 1.2,
-    borderRadius: BorderRadius.xl,
+    width: PHOTO_WIDTH,
+    height: PHOTO_HEIGHT,
+    borderRadius: BorderRadius.xxl,
     overflow: 'hidden',
     backgroundColor: Colors.background.tertiary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   photo: {
     width: '100%',
@@ -295,18 +313,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     overflow: 'hidden',
-    borderBottomLeftRadius: BorderRadius.xl,
-    borderBottomRightRadius: BorderRadius.xl,
+    borderBottomLeftRadius: BorderRadius.xxl,
+    borderBottomRightRadius: BorderRadius.xxl,
   },
   photoBlur: {
     overflow: 'hidden',
   },
   photoInfo: {
-    padding: Spacing.md,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
   },
   photoUser: {
-    ...Typography.caption1,
+    ...Typography.subheadline,
     color: '#FFF',
     fontWeight: '600',
   },
@@ -314,14 +336,26 @@ const styles = StyleSheet.create({
     ...Typography.headline,
     color: '#FFF',
     fontWeight: '700',
-    marginTop: 2,
   },
   pressed: {
     opacity: 0.9,
   },
   skipBtn: {
     alignSelf: 'center',
-    marginBottom: 120,
+    marginBottom: 100,
+    marginTop: Spacing.md,
+    borderRadius: BorderRadius.pill,
+    overflow: 'hidden',
+  },
+  skipBlur: {
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.sm + 2,
+    overflow: 'hidden',
+  },
+  skipText: {
+    ...Typography.subheadline,
+    color: Colors.text.secondary,
+    fontWeight: '600',
   },
   emptyIcon: {
     fontSize: 48,

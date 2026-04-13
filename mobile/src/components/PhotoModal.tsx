@@ -127,6 +127,9 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
                       style={styles.photo}
                       contentFit="cover"
                       transition={200}
+                      cachePolicy="memory-disk"
+                      recyclingKey={`modal-${photo.id}`}
+                      placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                     />
 
                     {/* Uploader info */}

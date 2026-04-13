@@ -57,6 +57,9 @@ export function PhotoCard({
           style={styles.image}
           contentFit="cover"
           transition={200}
+          cachePolicy="memory-disk"
+          recyclingKey={`photo-${photo.id}`}
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
         />
 
         {rank !== undefined && (

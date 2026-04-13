@@ -18,6 +18,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  FadeIn,
 } from 'react-native-reanimated';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/theme';
 import {
@@ -29,8 +30,9 @@ import {
 import { useAuthStore } from '../../src/store/authStore';
 import api from '../../src/services/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PHOTO_SIZE = (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.md) / 2;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const PHOTO_WIDTH = SCREEN_WIDTH - Spacing.lg * 2;
+const PHOTO_HEIGHT = (SCREEN_HEIGHT - 320) / 2;
 
 type GameState = 'loading' | 'playing' | 'game_over' | 'leaderboard';
 
@@ -56,7 +58,6 @@ export default function TukacodleScreen() {
     try {
       const res = await api.post('/tukacodle/start/');
       const data = res.data;
-      // API returns { photos: [p1, p2] } — normalize
       const normalized = data.photos
         ? { photo1: data.photos[0], photo2: data.photos[1] }
         : data;
@@ -66,6 +67,9 @@ export default function TukacodleScreen() {
       scale1.value = 1;
       scale2.value = 1;
       setGameState('playing');
+      // Prefetch images
+      Image.prefetch(getImageUrl(normalized.photo1.image));
+      Image.prefetch(getImageUrl(normalized.photo2.image));
     } catch (e: any) {
       if (e.response?.status === 400) {
         setFinalScore(e.response.data.score || streak);
@@ -111,11 +115,11 @@ export default function TukacodleScreen() {
       setCorrect(isCorrect);
 
       if (isFirst) {
-        scale1.value = withSpring(1.08);
-        scale2.value = withTiming(0.85);
+        scale1.value = withSpring(1.03);
+        scale2.value = withTiming(0.92);
       } else {
-        scale2.value = withSpring(1.08);
-        scale1.value = withTiming(0.85);
+        scale2.value = withSpring(1.03);
+        scale1.value = withTiming(0.92);
       }
 
       if (isCorrect) {
@@ -130,9 +134,10 @@ export default function TukacodleScreen() {
         if (isCorrect) {
           scale1.value = 1;
           scale2.value = 1;
-          // If API returned a next_photo, use it with the winner
           if (res.data.next_photo) {
-            setPhotos({ photo1: photos[isFirst ? 'photo1' : 'photo2'], photo2: res.data.next_photo });
+            const nextPhotos = { photo1: photos[isFirst ? 'photo1' : 'photo2'], photo2: res.data.next_photo };
+            setPhotos(nextPhotos);
+            Image.prefetch(getImageUrl(res.data.next_photo.image));
             setChosen(null);
             setCorrect(null);
           } else {
@@ -150,7 +155,7 @@ export default function TukacodleScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `I scored ${finalScore} on Tukacodle! Can you beat me? 🎯`,
+        message: `I scored ${finalScore} on Tukacodle! Can you beat me?`,
       });
     } catch (e) {
       console.error(e);
@@ -183,7 +188,7 @@ export default function TukacodleScreen() {
             { paddingTop: insets.top + Spacing.huge, paddingBottom: insets.bottom + 100 },
           ]}
         >
-          <Text style={styles.gameOverTitle}>Game Over!</Text>
+          <Text style={styles.gameOverTitle}>Game Over</Text>
           <GlassCard style={styles.scoreCard}>
             <Text style={styles.scoreValue}>{finalScore}</Text>
             <Text style={styles.scoreLabel}>Your Score</Text>
@@ -271,34 +276,37 @@ export default function TukacodleScreen() {
   // Playing state
   return (
     <MeshGradientBackground variant="warm">
-      <View style={[styles.container, { paddingTop: insets.top + Spacing.lg }]}>
-        <Text style={styles.title}>🎯 Tukacodle</Text>
-        <Text style={styles.subtitle}>Which photo has a higher ELO?</Text>
+      <View style={[styles.container, { paddingTop: insets.top + Spacing.md }]}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Tukacodle</Text>
+          <Text style={styles.subtitle}>Which photo has a higher ELO?</Text>
+        </View>
 
         <View style={styles.statsRow}>
-          <GlassCard padding={false} style={styles.statPill}>
-            <View style={styles.statPillInner}>
-              <Text style={styles.statPillText}>🔥 Streak: {streak}</Text>
-            </View>
-          </GlassCard>
+          <View style={styles.statPill}>
+            <BlurView intensity={30} tint="light" style={styles.statPillBlur}>
+              <Text style={styles.statPillText}>Streak: {streak}</Text>
+            </BlurView>
+          </View>
           {isAuthenticated && (
-            <GlassCard padding={false} style={styles.statPill}>
-              <View style={styles.statPillInner}>
+            <View style={styles.statPill}>
+              <BlurView intensity={30} tint="light" style={styles.statPillBlur}>
                 <Text style={styles.statPillText}>
                   Attempts: {attempts}/{maxAttempts}
                 </Text>
-              </View>
-            </GlassCard>
+              </BlurView>
+            </View>
           )}
         </View>
 
-        <View style={styles.photosRow}>
+        <View style={styles.photosColumn}>
           {photos && (
             <>
-              <Animated.View style={animStyle1}>
+              <Animated.View style={animStyle1} entering={FadeIn.duration(300)}>
                 <Pressable
                   onPress={() => handleGuess(photos.photo1.id, true)}
                   disabled={chosen !== null}
+                  style={({ pressed }) => [pressed && chosen === null && styles.pressed]}
                 >
                   <View
                     style={[
@@ -315,9 +323,13 @@ export default function TukacodleScreen() {
                       source={{ uri: getImageUrl(photos.photo1.image) }}
                       style={styles.photo}
                       contentFit="cover"
+                      transition={200}
+                      cachePolicy="memory-disk"
+                      recyclingKey={`tuk-1-${photos.photo1.id}`}
+                      placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                     />
                     <View style={styles.photoLabel}>
-                      <BlurView intensity={50} tint="dark" style={{ overflow: 'hidden' }}>
+                      <BlurView intensity={40} tint="dark" style={{ overflow: 'hidden' }}>
                         <View style={styles.photoLabelInner}>
                           <Text style={styles.photoUser}>
                             {photos.photo1.uploader?.username}
@@ -326,7 +338,10 @@ export default function TukacodleScreen() {
                       </BlurView>
                     </View>
                     {chosen === photos.photo1.id && (
-                      <View style={styles.feedbackOverlay}>
+                      <View style={[
+                        styles.feedbackOverlay,
+                        { backgroundColor: correct ? 'rgba(52, 199, 89, 0.25)' : 'rgba(255, 59, 48, 0.25)' },
+                      ]}>
                         <Text style={styles.feedbackIcon}>
                           {correct ? '✓' : '✗'}
                         </Text>
@@ -336,10 +351,11 @@ export default function TukacodleScreen() {
                 </Pressable>
               </Animated.View>
 
-              <Animated.View style={animStyle2}>
+              <Animated.View style={animStyle2} entering={FadeIn.duration(300).delay(100)}>
                 <Pressable
                   onPress={() => handleGuess(photos.photo2.id, false)}
                   disabled={chosen !== null}
+                  style={({ pressed }) => [pressed && chosen === null && styles.pressed]}
                 >
                   <View
                     style={[
@@ -356,9 +372,13 @@ export default function TukacodleScreen() {
                       source={{ uri: getImageUrl(photos.photo2.image) }}
                       style={styles.photo}
                       contentFit="cover"
+                      transition={200}
+                      cachePolicy="memory-disk"
+                      recyclingKey={`tuk-2-${photos.photo2.id}`}
+                      placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                     />
                     <View style={styles.photoLabel}>
-                      <BlurView intensity={50} tint="dark" style={{ overflow: 'hidden' }}>
+                      <BlurView intensity={40} tint="dark" style={{ overflow: 'hidden' }}>
                         <View style={styles.photoLabelInner}>
                           <Text style={styles.photoUser}>
                             {photos.photo2.uploader?.username}
@@ -367,7 +387,10 @@ export default function TukacodleScreen() {
                       </BlurView>
                     </View>
                     {chosen === photos.photo2.id && (
-                      <View style={styles.feedbackOverlay}>
+                      <View style={[
+                        styles.feedbackOverlay,
+                        { backgroundColor: correct ? 'rgba(52, 199, 89, 0.25)' : 'rgba(255, 59, 48, 0.25)' },
+                      ]}>
                         <Text style={styles.feedbackIcon}>
                           {correct ? '✓' : '✗'}
                         </Text>
@@ -395,6 +418,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
   },
+  header: {
+    marginBottom: Spacing.sm,
+  },
   title: {
     ...Typography.largeTitle,
     color: Colors.text.primary,
@@ -407,33 +433,38 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
   },
   statPill: {
     borderRadius: BorderRadius.pill,
+    overflow: 'hidden',
   },
-  statPillInner: {
+  statPillBlur: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
+    overflow: 'hidden',
   },
   statPillText: {
     ...Typography.subheadline,
     fontWeight: '600',
     color: Colors.text.primary,
   },
-  photosRow: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-    justifyContent: 'center',
+  photosColumn: {
     flex: 1,
-    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.md,
   },
   photoCard: {
-    width: PHOTO_SIZE,
-    height: PHOTO_SIZE * 1.3,
-    borderRadius: BorderRadius.xl,
+    width: PHOTO_WIDTH,
+    height: PHOTO_HEIGHT,
+    borderRadius: BorderRadius.xxl,
     overflow: 'hidden',
     backgroundColor: Colors.background.tertiary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   photo: {
     width: '100%',
@@ -445,15 +476,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     overflow: 'hidden',
-    borderBottomLeftRadius: BorderRadius.xl,
-    borderBottomRightRadius: BorderRadius.xl,
+    borderBottomLeftRadius: BorderRadius.xxl,
+    borderBottomRightRadius: BorderRadius.xxl,
   },
   photoLabelInner: {
-    padding: Spacing.md,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
   },
   photoUser: {
-    ...Typography.caption1,
+    ...Typography.subheadline,
     color: '#FFF',
     fontWeight: '600',
   },
@@ -461,12 +493,15 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: BorderRadius.xxl,
   },
   feedbackIcon: {
     fontSize: 64,
     color: '#FFF',
     fontWeight: '700',
+  },
+  pressed: {
+    opacity: 0.9,
   },
   gameOverTitle: {
     ...Typography.largeTitle,
