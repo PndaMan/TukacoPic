@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "TukacoPic",
+    "slug": "tukacopic",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "tukacopic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "xyz.aetherlab.tukacopic",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "TukacoPic needs access to your photos to upload them.",
+        "NSCameraUsageDescription": "TukacoPic needs access to your camera to take photos."
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-image-picker"
+    ]
+  }
+}
