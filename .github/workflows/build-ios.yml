@@ -159,7 +159,7 @@ jobs:
             exit 1
           fi
 
-      - name: Package IPA
+      - name: Ad-hoc sign and package IPA
         run: |
           APP_PATH=$(find ios/build -name "*.app" -type d | head -1)
           if [ -z "$APP_PATH" ]; then
@@ -168,6 +168,11 @@ jobs:
             exit 1
           fi
           echo "Found app at: $APP_PATH"
+
+          # Ad-hoc sign so sideloading tools can process the IPA
+          codesign --force --deep --sign - "$APP_PATH"
+          echo "Ad-hoc signed successfully"
+
           mkdir -p Payload
           cp -r "$APP_PATH" Payload/
           zip -r "$GITHUB_WORKSPACE/TukacoPic.ipa" Payload
