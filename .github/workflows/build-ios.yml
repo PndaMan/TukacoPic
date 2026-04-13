@@ -68,7 +68,13 @@ jobs:
             -derivedDataPath ios/build \
             -arch arm64 \
             CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tail -30
+            2>&1 | tee ios/xcodebuild.log | tail -50
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "::group::Full build log (last 200 lines)"
+            tail -200 ios/xcodebuild.log
+            echo "::endgroup::"
+            exit 1
+          fi
 
       - name: Package Simulator Build
         run: |
@@ -145,7 +151,13 @@ jobs:
             -arch arm64 \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
-            2>&1 | tail -30
+            2>&1 | tee ios/xcodebuild.log | tail -50
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "::group::Full build log (last 200 lines)"
+            tail -200 ios/xcodebuild.log
+            echo "::endgroup::"
+            exit 1
+          fi
 
       - name: Package IPA
         run: |
