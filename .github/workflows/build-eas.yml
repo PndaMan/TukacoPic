@@ -1,0 +1,70 @@
+name: Build iOS (EAS)
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-eas.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'mobile/**'
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    name: Build IPA via EAS
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build IPA
+        run: eas build --platform ios --profile preview --non-interactive --wait
+
+  build-simulator:
+    name: Build Simulator via EAS
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Simulator
+        run: eas build --platform ios --profile simulator --non-interactive --wait

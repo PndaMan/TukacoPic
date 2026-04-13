@@ -41,3 +41,20 @@ ci-watch:
 	else \
 		gh run watch $$RUN_ID; \
 	fi
+
+## Trigger EAS build via GitHub Actions
+eas-build:
+	gh workflow run build-eas.yml
+	@echo "EAS build triggered. Run 'make eas-status' to check progress."
+
+## Show recent EAS workflow runs
+eas-status:
+	@echo "Recent EAS build runs:"
+	@echo ""
+	@gh run list --workflow build-eas.yml --limit 10 --json status,conclusion,name,headBranch,createdAt,databaseId \
+		--template '{{range .}}{{if eq .conclusion "success"}}✅{{else if eq .conclusion "failure"}}❌{{else if eq .status "in_progress"}}🔄{{else}}⏳{{end}} {{.name}} ({{.headBranch}}) — {{.conclusion}}{{if not .conclusion}}{{.status}}{{end}} — {{timeago .createdAt}} — ID: {{.databaseId}}{{"\n"}}{{end}}'
+
+## Show logs from the latest EAS build run
+eas-logs:
+	@RUN_ID=$$(gh run list --workflow build-eas.yml --limit 1 --json databaseId -q '.[0].databaseId'); \
+	gh run view $$RUN_ID --log-failed 2>/dev/null || gh run view $$RUN_ID --log | tail -80

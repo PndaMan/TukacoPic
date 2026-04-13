@@ -2,6 +2,12 @@
   "expo": {
     "name": "TukacoPic",
     "slug": "tukacopic",
+    "owner": "aidan_mcconnon",
+    "extra": {
+      "eas": {
+        "projectId": "f19f4c74-a530-4784-af57-099c58cadaf4"
+      }
+    },
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
