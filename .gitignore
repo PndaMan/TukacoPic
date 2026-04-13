@@ -1,71 +1,93 @@
-# Python
+# ── Python ──────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
 *.egg
-MANIFEST
+*.egg-info/
+dist/
+build/
+*.whl
 
-# Django
+# ── Django ──────────────────────────────────────────
 *.log
 local_settings.py
-# db.sqlite3
-# db.sqlite3-journal
-# media/
 staticfiles/
+media/
 
-# Environment variables
+# ── SQLite databases ───────────────────────────────
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3.backup*
+
+# ── Environment & secrets ──────────────────────────
 .env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+.env.*
+!.env.example
+env_vars.yaml
+*.pem
+*.key
+*.p12
+*.p8
+*.jks
+*.mobileprovision
 
-# Node.js
+# ── Virtual environments ───────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Node.js ────────────────────────────────────────
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
 
-# Frontend build
+# ── Frontend build ─────────────────────────────────
 frontend/dist/
 frontend/build/
 
-# IDE
+# ── Mobile / Expo ──────────────────────────────────
+mobile/.expo/
+mobile/web-build/
+mobile/expo-env.d.ts
+mobile/ios/
+mobile/android/
+*.tsbuildinfo
+
+# ── IDE ────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# ── OS ─────────────────────────────────────────────
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
+ehthumbs.db
 
-# Docker
+# ── Binaries & large files ─────────────────────────
+*.exe
+*.dll
+*.bin
+*.ipa
+
+# ── Temporary / scratch files ──────────────────────
+tmp.*
+*.tmp
+*.bak
+
+# ── Windows scripts ────────────────────────────────
+*.bat
+
+# ── Data dumps ──────────────────────────────────────
+*.sql
+*.json.dump
+
+# ── Claude Code (local config) ─────────────────────
+.claude/
+
+# ── Docker ─────────────────────────────────────────
 .dockerignore

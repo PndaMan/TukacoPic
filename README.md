@@ -1,213 +1,130 @@
-# TukacoPic - Photo Voting Platform
+<p align="center">
+  <img src="docs/logo.png" alt="TukacoPic" width="180" />
+</p>
 
-A "hot or not" style photo voting platform built with Django and React. Users can upload photos and vote on pairs of photos, with rankings determined by an Elo rating system.
+<h1 align="center">TukacoPic</h1>
+<p align="center"><em>One Nose to Rule Them All</em></p>
+
+<p align="center">
+  A competitive photo-voting platform where users upload photos, go head-to-head, and climb the leaderboard — powered by an Elo rating system.
+</p>
+
+---
 
 ## Features
 
-- **Photo Upload & Voting**: Users can upload photos and vote on pairs of photos
-- **Elo Rating System**: Photos are ranked using the Elo algorithm (K-factor: 32)
-- **Public Leaderboard**: View top-rated photos based on community votes
-- **User Profiles**: Track personal stats and uploaded photos
-- **Secure Authentication**: JWT tokens with secure httpOnly cookies
-- **Responsive Design**: Works on desktop and mobile devices
+- **Head-to-head voting** — swipe through random matchups and pick a winner
+- **Elo ranking** — every vote updates both photos' ratings (K-factor 32, starting at 1200)
+- **Public leaderboard** — see the highest-rated photos across the community
+- **User profiles** — track your uploads, win rate, and ranking history
+- **Cross-platform** — web app + native iOS/Android via Expo
+- **Secure auth** — JWT access tokens in memory, refresh tokens in httpOnly cookies
 
-## Tech Stack
+## Architecture
 
-- **Backend**: Django 4.2, Django REST Framework, PostgreSQL
-- **Frontend**: React 18, Vite, Tailwind CSS, Zustand
-- **Authentication**: JWT with secure cookies
-- **Deployment**: Docker containers for frontend and backend
+```
+backend/     Django 4.2 + DRF REST API, PostgreSQL, GCS media storage
+frontend/    React 18 SPA — Vite, Tailwind CSS, Zustand
+mobile/      React Native (Expo 54) — Expo Router, Reanimated
+```
 
-## Prerequisites
+## Getting Started
 
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL
-- Docker (for containerized deployment)
+### Prerequisites
 
-## Quick Start
+| Tool | Version |
+|------|---------|
+| Python | 3.11+ |
+| Node.js | 18+ |
+| PostgreSQL | 15+ (or SQLite for local dev) |
+| Docker | Optional — for containerised setup |
 
-### Backend Setup
+### Backend
 
-1. Navigate to the backend directory:
 ```bash
 cd backend
-```
-
-2. Create a virtual environment and install dependencies:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-```
-
-3. Set up environment variables:
-```bash
-cp .env.example .env
-# Edit .env with your database credentials and settings
-```
-
-4. Run database migrations:
-```bash
-python manage.py makemigrations
+cp .env.example .env   # edit with your credentials
 python manage.py migrate
-```
-
-5. Create a superuser (optional):
-```bash
-python manage.py createsuperuser
-```
-
-6. Start the development server:
-```bash
 python manage.py runserver
 ```
 
-### Frontend Setup
+### Frontend
 
-1. Navigate to the frontend directory:
 ```bash
 cd frontend
-```
-
-2. Install dependencies:
-```bash
 npm install
-```
-
-3. Set up environment variables:
-```bash
 cp .env.example .env
-# Edit .env if needed (default API URL should work for local development)
-```
-
-4. Start the development server:
-```bash
 npm run dev
 ```
 
-The application will be available at:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
+### Mobile
 
-## Docker Deployment
-
-### Using Docker Compose (Recommended)
-
-Create a `docker-compose.yml` file in the project root:
-
-```yaml
-version: '3.8'
-
-services:
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: tukaco_pic
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-  backend:
-    build: ./backend
-    environment:
-      - DB_HOST=db
-      - DB_NAME=tukaco_pic
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DEBUG=False
-    volumes:
-      - ./backend/media:/app/media
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-
-  frontend:
-    build: ./frontend
-    environment:
-      - VITE_API_BASE_URL=http://localhost:8000/api
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-
-volumes:
-  postgres_data:
-```
-
-Then run:
 ```bash
-docker-compose up --build
+cd mobile
+npm install
+npx expo start
 ```
 
-### Individual Docker Builds
+### Docker Compose (full stack)
 
-**Backend:**
 ```bash
-cd backend
-docker build -t tukaco-pic-backend .
-docker run -p 8000:8000 tukaco-pic-backend
+docker compose up --build
 ```
 
-**Frontend:**
-```bash
-cd frontend
-docker build -t tukaco-pic-frontend .
-docker run -p 3000:80 tukaco-pic-frontend
-```
+This starts PostgreSQL (5432), the Django API (8000), and the React frontend (3000).
 
-## API Endpoints
+## API Reference
 
-### Authentication
-- `POST /api/users/register/` - User registration
-- `POST /api/token/` - Login (returns access token + httpOnly refresh cookie)
-- `POST /api/token/refresh/` - Refresh access token
-
-### Photos & Voting
-- `GET /api/photos/pair/` - Get two random photos for voting (authenticated)
-- `POST /api/vote/` - Submit a vote (authenticated)
-- `GET /api/leaderboard/` - Public leaderboard
-- `POST /api/photos/upload/` - Upload a photo (authenticated)
-
-### User Profile
-- `GET /api/profile/` - Get user profile and stats (authenticated)
-- `GET /api/photos/my/` - Get user's uploaded photos (authenticated)
-
-## Security Features
-
-- **Secure JWT Implementation**: Access tokens stored in memory, refresh tokens in httpOnly cookies
-- **CORS Protection**: Configured for specific origins
-- **Input Validation**: Comprehensive validation on all endpoints
-- **SQL Injection Protection**: Using Django ORM
-- **XSS Protection**: Secure headers and CSP
+| Method | Endpoint | Auth | Description |
+|--------|----------|:----:|-------------|
+| `POST` | `/api/users/register/` | | Create account |
+| `POST` | `/api/token/` | | Login — returns JWT |
+| `POST` | `/api/token/refresh/` | | Refresh access token |
+| `GET` | `/api/photos/pair/` | Yes | Fetch random matchup |
+| `POST` | `/api/vote/` | Yes | Submit vote |
+| `GET` | `/api/leaderboard/` | | Public rankings |
+| `POST` | `/api/photos/upload/` | Yes | Upload photo |
+| `GET` | `/api/profile/` | Yes | User profile & stats |
+| `GET` | `/api/photos/my/` | Yes | User's uploads |
 
 ## Elo Rating System
 
-Photos start with an Elo score of 1200. When users vote, scores are updated using:
+Photos start at **1200**. After each vote both ratings are updated:
 
 ```
-E_A = 1 / (1 + 10^((R_B - R_A) / 400))
-R_A' = R_A + K × (S_A - E_A)
+E = 1 / (1 + 10^((R_opponent - R_self) / 400))
+R' = R + K * (S - E)
 ```
 
-Where:
-- `E_A` is the expected score for photo A
-- `R_A`, `R_B` are current ratings
-- `K` is the K-factor (32)
-- `S_A` is the actual score (1 for win, 0 for loss)
+Where **K = 32**, **S = 1** (win) or **0** (loss), and **E** is the expected outcome.
+
+## Deployment
+
+Both `backend/` and `frontend/` include production-ready `Dockerfile`s. The root `docker-compose.yml` orchestrates all services. For GCP Cloud Run deployments, see the `Procfile` in each service directory.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+Contributions are welcome! Please follow these steps:
+
+1. **Fork** the repository
+2. **Create a feature branch** — `git checkout -b feat/my-feature`
+3. **Commit your changes** — use clear, descriptive commit messages
+4. **Push** to your fork — `git push origin feat/my-feature`
+5. **Open a Pull Request** against `master`
+
+### Guidelines
+
+- Keep PRs focused — one feature or fix per PR
+- Follow the existing code style
+- Add or update tests where applicable
+- Update documentation if your change affects the public API or setup steps
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](LICENSE).
+
+## Acknowledgements
+
+Built with [Django](https://www.djangoproject.com/), [React](https://react.dev/), [Expo](https://expo.dev/), and [Tailwind CSS](https://tailwindcss.com/).
