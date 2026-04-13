@@ -161,14 +161,14 @@ export default function PublicProfileScreen() {
               ) : friendshipStatus === 'pending_received' ? (
                 <GlassButton
                   title="Accept Request"
-                  onPress={() => router.push('/(tabs)/friends')}
+                  onPress={() => router.push({ pathname: '/(tabs)/profile', params: { tab: 'friends' } })}
                 />
               ) : (
                 <GlassButton title="Add Friend" onPress={handleAddFriend} />
               )}
               <GlassButton
                 title="💬 Message"
-                onPress={() => router.push('/(tabs)/messages')}
+                onPress={() => router.push({ pathname: '/(tabs)/profile', params: { tab: 'messages' } })}
                 variant="glass"
               />
             </View>

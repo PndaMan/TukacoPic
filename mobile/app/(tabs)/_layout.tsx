@@ -76,14 +76,6 @@ export default function TabLayout() {
           href: isAuthenticated ? undefined : null,
         }}
       />
-      <Tabs.Screen
-        name="friends"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="messages"
-        options={{ href: null }}
-      />
     </Tabs>
   );
 }
