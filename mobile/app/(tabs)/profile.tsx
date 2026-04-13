@@ -112,7 +112,7 @@ export default function ProfileScreen() {
   const fetchFriends = useCallback(async () => {
     try {
       const res = await api.get('/friends/');
-      const data = res.data.results || res.data || [];
+      const data = res.data.friends || res.data.results || (Array.isArray(res.data) ? res.data : []);
       setFriendsList(data);
       setMessageFriends(data);
     } catch (e) {
@@ -221,7 +221,7 @@ export default function ProfileScreen() {
     } as any);
     try {
       const res = await api.patch('/profile/me/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {},
       });
       setUser({ ...user!, profile_picture: res.data.profile_picture });
       fetchProfile();
@@ -246,7 +246,7 @@ export default function ProfileScreen() {
     } as any);
     try {
       await api.patch('/profile/me/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {},
       });
       fetchProfile();
     } catch (e) {
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   badgePill: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    backgroundColor: 'rgba(1, 152, 99, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: BorderRadius.pill,

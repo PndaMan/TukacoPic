@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   tabActive: {
-    backgroundColor: 'rgba(0, 122, 255, 0.12)',
+    backgroundColor: 'rgba(1, 152, 99, 0.12)',
   },
   iconActive: {
     transform: [{ scale: 1.1 }],

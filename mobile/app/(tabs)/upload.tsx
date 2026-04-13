@@ -78,7 +78,6 @@ export default function UploadScreen() {
       });
 
       await api.post('/photos/upload/bulk/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 120000,
       });
 

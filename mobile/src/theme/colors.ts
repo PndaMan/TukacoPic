@@ -1,9 +1,9 @@
 // iOS 26 Liquid Glass color palette
 export const Colors = {
   // Primary tints - used through glass materials
-  primary: '#007AFF',
-  primaryLight: '#4DA3FF',
-  primaryDark: '#0055CC',
+  primary: '#019863',
+  primaryLight: '#20c78a',
+  primaryDark: '#017a4f',
 
   // System colors
   systemRed: '#FF3B30',
@@ -20,7 +20,7 @@ export const Colors = {
     backgroundDark: 'rgba(0, 0, 0, 0.25)',
     border: 'rgba(255, 255, 255, 0.3)',
     borderDark: 'rgba(255, 255, 255, 0.1)',
-    tint: 'rgba(120, 180, 255, 0.15)',
+    tint: 'rgba(1, 152, 99, 0.15)',
     highlight: 'rgba(255, 255, 255, 0.5)',
   },
 
@@ -50,13 +50,13 @@ export const Colors = {
     gold: '#FFD700',
     silver: '#C0C0C0',
     bronze: '#CD7F32',
-    regular: '#007AFF',
+    regular: '#019863',
   },
 
   // Difficulty colors
   difficulty: {
     easy: '#34C759',
-    medium: '#007AFF',
+    medium: '#019863',
     hard: '#AF52DE',
     legendary: '#FFD700',
   },

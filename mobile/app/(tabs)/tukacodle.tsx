@@ -54,11 +54,13 @@ export default function TukacodleScreen() {
   const startGame = useCallback(async () => {
     setGameState('loading');
     try {
-      const res = await api.get('/tukacodle/start/');
-      setPhotos(res.data);
-      setStreak(res.data.current_streak || 0);
-      setAttempts(res.data.attempts_used || 0);
-      setMaxAttempts(res.data.max_attempts || 3);
+      const res = await api.post('/tukacodle/start/');
+      const data = res.data;
+      // API returns { photos: [p1, p2] } — normalize
+      const normalized = data.photos
+        ? { photo1: data.photos[0], photo2: data.photos[1] }
+        : data;
+      setPhotos(normalized);
       setChosen(null);
       setCorrect(null);
       scale1.value = 1;
@@ -93,12 +95,18 @@ export default function TukacodleScreen() {
   }, []);
 
   const handleGuess = async (photoId: number, isFirst: boolean) => {
-    if (chosen !== null) return;
+    if (chosen !== null || !photos) return;
     setChosen(photoId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
+    const otherId = isFirst ? photos.photo2.id : photos.photo1.id;
+
     try {
-      const res = await api.post('/tukacodle/guess/', { photo_id: photoId });
+      const res = await api.post('/tukacodle/guess/', {
+        chosen_id: photoId,
+        other_id: otherId,
+        current_streak: streak,
+      });
       const isCorrect = res.data.correct;
       setCorrect(isCorrect);
 
@@ -112,17 +120,24 @@ export default function TukacodleScreen() {
 
       if (isCorrect) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setStreak((s) => s + 1);
+        setStreak(res.data.current_streak || streak + 1);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setFinalScore(res.data.score || streak);
+        setFinalScore(res.data.final_score || streak);
       }
 
       setTimeout(() => {
         if (isCorrect) {
           scale1.value = 1;
           scale2.value = 1;
-          startGame();
+          // If API returned a next_photo, use it with the winner
+          if (res.data.next_photo) {
+            setPhotos({ photo1: photos[isFirst ? 'photo1' : 'photo2'], photo2: res.data.next_photo });
+            setChosen(null);
+            setCorrect(null);
+          } else {
+            startGame();
+          }
         } else {
           setGameState('game_over');
         }
@@ -484,7 +499,7 @@ const styles = StyleSheet.create({
   userScoreCard: {
     alignItems: 'center',
     marginVertical: Spacing.lg,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    backgroundColor: 'rgba(1, 152, 99, 0.1)',
   },
   userScoreLabel: {
     ...Typography.subheadline,

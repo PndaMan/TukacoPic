@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   badgePill: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    backgroundColor: 'rgba(1, 152, 99, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: BorderRadius.pill,

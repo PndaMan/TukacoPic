@@ -41,7 +41,12 @@ export default function VoteScreen() {
   const fetchPair = useCallback(async () => {
     try {
       const res = await api.get('/photos/pair/');
-      return res.data;
+      const data = res.data;
+      // API returns { photos: [p1, p2] } — normalize to { photo1, photo2 }
+      if (data.photos && Array.isArray(data.photos)) {
+        return { photo1: data.photos[0], photo2: data.photos[1] };
+      }
+      return data;
     } catch (e: any) {
       if (e.response?.status === 404) {
         setMessage("You've voted on all available pairs!");

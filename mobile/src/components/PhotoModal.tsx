@@ -147,11 +147,18 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
                     {/* Reactions */}
                     <View style={styles.reactions}>
                       {REACTION_TYPES.map((type) => {
-                        const count =
-                          photo.reactions?.find(
-                            (r: any) => r.reaction_type === type
-                          )?.count || 0;
-                        const isActive = photo.user_reaction === type;
+                        // reactions can be {} (object keyed by type) or [] (array)
+                        const reactions = photo.reactions || {};
+                        let count = 0;
+                        if (Array.isArray(reactions)) {
+                          count = reactions.find((r: any) => r.reaction_type === type)?.count || 0;
+                        } else if (typeof reactions === 'object') {
+                          count = reactions[type] || 0;
+                        }
+                        const userReaction = photo.user_reaction;
+                        const isActive = Array.isArray(userReaction)
+                          ? userReaction.includes(type)
+                          : userReaction === type;
                         return (
                           <Pressable
                             key={type}
@@ -320,7 +327,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   reactionActive: {
-    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+    backgroundColor: 'rgba(1, 152, 99, 0.15)',
   },
   reactionEmoji: {
     fontSize: 18,
