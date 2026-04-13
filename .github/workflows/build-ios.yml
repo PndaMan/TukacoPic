@@ -169,9 +169,44 @@ jobs:
           fi
           echo "Found app at: $APP_PATH"
 
-          # Ad-hoc sign so sideloading tools can process the IPA
-          codesign --force --deep --sign - "$APP_PATH"
+          # Extract bundle identifier from Info.plist
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist")
+          echo "Bundle ID: $BUNDLE_ID"
+
+          # Create minimal entitlements for sideloading
+          cat > /tmp/entitlements.plist << 'ENTXML'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>com.apple.developer.team-identifier</key>
+            <string>SIDELOAD00</string>
+            <key>get-task-allow</key>
+            <true/>
+          </dict>
+          </plist>
+          ENTXML
+
+          # Sign each embedded framework individually first (--deep is unreliable)
+          if [ -d "$APP_PATH/Frameworks" ]; then
+            find "$APP_PATH/Frameworks" -name "*.framework" -o -name "*.dylib" | while read fw; do
+              echo "Signing framework: $fw"
+              codesign --force --sign - "$fw"
+            done
+          fi
+
+          # Sign any app extensions
+          find "$APP_PATH" -name "*.appex" -type d | while read ext; do
+            echo "Signing extension: $ext"
+            codesign --force --sign - "$ext"
+          done
+
+          # Sign the main app with entitlements
+          codesign --force --sign - --entitlements /tmp/entitlements.plist "$APP_PATH"
           echo "Ad-hoc signed successfully"
+
+          # Verify signature
+          codesign --verify --verbose "$APP_PATH" || echo "Warning: verification note (ad-hoc is expected)"
 
           mkdir -p Payload
           cp -r "$APP_PATH" Payload/
