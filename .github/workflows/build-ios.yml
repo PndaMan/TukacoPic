@@ -209,6 +209,45 @@ jobs:
           path: TukacoPic.ipa
           retention-days: 30
 
+  release-ipa:
+    name: Create Release
+    needs: build-ipa
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+    steps:
+      - name: Download IPA artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: TukacoPic-ipa
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "Build #${{ github.run_number }} (${{ steps.sha.outputs.short }})"
+          body: |
+            Automated build from commit ${{ github.sha }}
+
+            **Commit:** `${{ steps.sha.outputs.short }}`
+            **Message:** ${{ github.event.head_commit.message }}
+          files: TukacoPic.ipa
+          make_latest: true
+
+      - name: Trigger source update
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.SOURCE_REPO_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/PndaMan/sidestore-source/dispatches \
+            -d '{"event_type":"ipa-updated"}'
+        continue-on-error: true
+
   # Future: App Store upload via EAS
   # build-appstore:
   #   name: Build for App Store (EAS)
