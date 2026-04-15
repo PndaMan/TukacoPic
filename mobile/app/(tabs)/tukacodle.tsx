@@ -102,7 +102,8 @@ export default function TukacodleScreen() {
           ? api.get('/tukacodle/user-score/')
           : Promise.resolve({ data: null }),
       ]);
-      const lbData = lbRes.data?.results || lbRes.data;
+      // API returns { date, scores: [...] }
+      const lbData = lbRes.data?.scores || lbRes.data?.results || lbRes.data;
       setLeaderboard(Array.isArray(lbData) ? lbData : []);
       if (scoreRes.data) {
         setUserScore(scoreRes.data);
@@ -144,10 +145,13 @@ export default function TukacodleScreen() {
 
       if (isCorrect) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setStreak(res.data.current_streak || streak + 1);
+        const newStreak = res.data.current_streak ?? streak + 1;
+        setStreak(newStreak);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setFinalScore(res.data.final_score || streak);
+        // final_score from API is the definitive score; use streak as fallback
+        const score = res.data.final_score ?? streak;
+        setFinalScore(score);
       }
 
       setTimeout(() => {
@@ -225,9 +229,9 @@ export default function TukacodleScreen() {
                 setGameState('leaderboard');
               }}
             />
-            {isAuthenticated && attempts < maxAttempts && (
+            {(!isAuthenticated || attempts < maxAttempts) && (
               <GlassButton
-                title={`Play Again (${maxAttempts - attempts} left)`}
+                title={isAuthenticated ? `Play Again (${maxAttempts - attempts} left)` : 'Play Again'}
                 onPress={() => {
                   fetchUserAttempts();
                   startGame();
@@ -256,7 +260,7 @@ export default function TukacodleScreen() {
           {userScore && (
             <GlassCard style={styles.userScoreCard}>
               <Text style={styles.userScoreLabel}>Your Best Today</Text>
-              <Text style={styles.userScoreValue}>{userScore.best_score || 0}</Text>
+              <Text style={styles.userScoreValue}>{userScore.highest_score ?? userScore.best_score ?? 0}</Text>
               <Text style={styles.userAttempts}>
                 Attempts: {userScore.attempts_used || 0}/{userScore.max_attempts || 3}
               </Text>
@@ -291,9 +295,9 @@ export default function TukacodleScreen() {
           )}
 
           <View style={styles.lbActions}>
-            {isAuthenticated && attempts < maxAttempts && (
+            {(!isAuthenticated || attempts < maxAttempts) && (
               <GlassButton
-                title={`Play Again (${maxAttempts - attempts} left)`}
+                title={isAuthenticated ? `Play Again (${maxAttempts - attempts} left)` : 'Play Again'}
                 onPress={() => {
                   fetchUserAttempts();
                   startGame();

@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/theme';
 import { PhotoCard, PhotoModal, MeshGradientBackground, GlassButton } from '../../src/components';
 import api from '../../src/services/api';
@@ -40,9 +41,12 @@ export default function LeaderboardScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchLeaderboard();
-  }, []);
+  // Fetch on mount and when tab comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchLeaderboard();
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

@@ -92,10 +92,12 @@ export default function PublicProfileScreen() {
     );
   }
 
+  // API returns { user: {...}, stats: {...}, best_photos: [...], friendship_status, is_friend }
+  const userData = profile.user || profile;
   const friendshipStatus = profile.friendship_status;
   const stats = profile.stats || {};
-  const photos = profile.photos || [];
-  const achievements = profile.achievements || [];
+  const photos = profile.best_photos || profile.photos || [];
+  const achievements = userData.achievements || [];
 
   return (
     <MeshGradientBackground>
@@ -116,9 +118,9 @@ export default function PublicProfileScreen() {
 
         {/* Banner */}
         <View style={[styles.banner, { paddingTop: insets.top }]}>
-          {profile.banner_image ? (
+          {userData.banner_image ? (
             <Image
-              source={{ uri: getImageUrl(profile.banner_image) }}
+              source={{ uri: getImageUrl(userData.banner_image) }}
               style={StyleSheet.absoluteFillObject}
               contentFit="cover"
             />
@@ -133,22 +135,22 @@ export default function PublicProfileScreen() {
         <View style={styles.profileSection}>
           <Image
             source={{
-              uri: profile.profile_picture
-                ? getImageUrl(profile.profile_picture)
+              uri: userData.profile_picture
+                ? getImageUrl(userData.profile_picture)
                 : undefined,
             }}
             style={styles.avatar}
             contentFit="cover"
           />
-          <Text style={styles.username}>{profile.username}</Text>
-          {profile.badge && (
+          <Text style={styles.username}>{userData.username}</Text>
+          {userData.badge && (
             <View style={styles.badgePill}>
-              <Text style={styles.badgeText}>🏆 {profile.badge}</Text>
+              <Text style={styles.badgeText}>🏆 {userData.badge}</Text>
             </View>
           )}
-          {profile.current_voting_streak > 0 && (
+          {userData.current_voting_streak > 0 && (
             <Text style={styles.streak}>
-              🔥 {profile.current_voting_streak} day streak
+              🔥 {userData.current_voting_streak} day streak
             </Text>
           )}
 
@@ -157,9 +159,9 @@ export default function PublicProfileScreen() {
             <View style={styles.actions}>
               {friendshipStatus === 'friends' ? (
                 <GlassButton title="Friends" onPress={() => {}} variant="glass" disabled />
-              ) : friendshipStatus === 'pending_sent' ? (
+              ) : friendshipStatus === 'pending_from_me' ? (
                 <GlassButton title="Request Sent" onPress={() => {}} variant="glass" disabled />
-              ) : friendshipStatus === 'pending_received' ? (
+              ) : friendshipStatus === 'pending_from_them' ? (
                 <GlassButton
                   title="Accept Request"
                   onPress={() => router.push({ pathname: '/(tabs)/profile', params: { tab: 'friends' } })}
@@ -178,16 +180,16 @@ export default function PublicProfileScreen() {
 
         <View style={styles.content}>
           {/* Bio */}
-          {profile.bio && (
+          {userData.bio && (
             <GlassCard style={styles.bioCard}>
-              <Text style={styles.bioText}>{profile.bio}</Text>
+              <Text style={styles.bioText}>{userData.bio}</Text>
             </GlassCard>
           )}
 
           {/* Stats */}
           <View style={styles.statsGrid}>
             {[
-              { label: 'Photos', value: stats.photos_count || photos.length },
+              { label: 'Photos', value: stats.photos_uploaded || stats.photos_count || photos.length },
               { label: 'Votes Cast', value: stats.votes_cast || 0 },
               { label: 'Total ELO', value: Math.round(stats.total_elo || 0) },
               { label: 'Avg ELO', value: Math.round(stats.average_elo || 0) },
