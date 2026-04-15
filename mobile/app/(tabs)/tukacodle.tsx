@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -51,12 +51,18 @@ export default function TukacodleScreen() {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [userScore, setUserScore] = useState<any>(null);
   const [finalScore, setFinalScore] = useState(0);
+  // Track the actual gameState in a ref so useFocusEffect can read current value
+  const gameStateRef = useRef<GameState>('loading');
+  const setGameStateTracked = (state: GameState) => {
+    gameStateRef.current = state;
+    setGameState(state);
+  };
 
   const scale1 = useSharedValue(1);
   const scale2 = useSharedValue(1);
 
   // Fetch user's attempt count from server, returns the data
-  const fetchUserAttempts = useCallback(async () => {
+  const fetchUserAttempts = async () => {
     if (!isAuthenticated) return null;
     try {
       const res = await api.get('/tukacodle/user-score/');
@@ -69,10 +75,10 @@ export default function TukacodleScreen() {
       // User may not have played today yet
     }
     return null;
-  }, [isAuthenticated]);
+  };
 
-  const startGame = useCallback(async () => {
-    setGameState('loading');
+  const startGame = async () => {
+    setGameStateTracked('loading');
     setStreak(0);
     try {
       const res = await api.post('/tukacodle/start/');
@@ -85,18 +91,16 @@ export default function TukacodleScreen() {
       setCorrect(null);
       scale1.value = 1;
       scale2.value = 1;
-      setGameState('playing');
+      setGameStateTracked('playing');
       Image.prefetch(getImageUrl(normalized.photo1.image));
       Image.prefetch(getImageUrl(normalized.photo2.image));
     } catch (e: any) {
-      if (e.response?.status === 400) {
-        setFinalScore(e.response.data.score ?? streak);
-        await fetchUserAttempts();
-        fetchLeaderboard();
-        setGameState('game_over');
-      }
+      // If start fails for any reason, go to leaderboard
+      await fetchUserAttempts();
+      await fetchLeaderboard();
+      setGameStateTracked('leaderboard');
     }
-  }, [streak]);
+  };
 
   const fetchLeaderboard = async () => {
     try {
@@ -118,19 +122,33 @@ export default function TukacodleScreen() {
     }
   };
 
-  // On tab focus: check attempts and route to the right state
+  const goToLeaderboard = async () => {
+    setGameStateTracked('loading');
+    await fetchLeaderboard();
+    setGameStateTracked('leaderboard');
+  };
+
+  // On tab focus: if first load start game, if all attempts used go to leaderboard
   useFocusEffect(
     useCallback(() => {
       const init = async () => {
+        const currentState = gameStateRef.current;
+
+        // If already playing or on game_over, don't interrupt
+        if (currentState === 'playing' || currentState === 'game_over') {
+          return;
+        }
+
         const data = await fetchUserAttempts();
         const used = data?.attempts_used || 0;
         const max = data?.max_attempts || 3;
+
         if (isAuthenticated && used >= max) {
-          // All attempts used — go straight to leaderboard
-          fetchLeaderboard();
-          setGameState('leaderboard');
-        } else if (gameState === 'loading' || gameState === 'leaderboard') {
-          // Has attempts left — start a game
+          // All attempts used — show leaderboard
+          await fetchLeaderboard();
+          setGameStateTracked('leaderboard');
+        } else {
+          // Has attempts left or first load — start a game
           startGame();
         }
       };
@@ -168,7 +186,6 @@ export default function TukacodleScreen() {
         setStreak(newStreak);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        // final_score from API is the definitive score; use streak as fallback
         const score = res.data.final_score ?? streak;
         setFinalScore(score);
       }
@@ -187,9 +204,8 @@ export default function TukacodleScreen() {
             startGame();
           }
         } else {
-          // Refresh attempts from server before showing game over
           await fetchUserAttempts();
-          setGameState('game_over');
+          setGameStateTracked('game_over');
         }
       }, 800);
     } catch (e) {
@@ -214,6 +230,7 @@ export default function TukacodleScreen() {
     transform: [{ scale: scale2.value }],
   }));
 
+  // ─── LOADING ───
   if (gameState === 'loading') {
     return (
       <MeshGradientBackground>
@@ -224,6 +241,7 @@ export default function TukacodleScreen() {
     );
   }
 
+  // ─── GAME OVER ───
   if (gameState === 'game_over') {
     return (
       <MeshGradientBackground>
@@ -240,21 +258,19 @@ export default function TukacodleScreen() {
           </GlassCard>
 
           <View style={styles.gameOverActions}>
-            {(!isAuthenticated || attempts < maxAttempts) && (
-              <GlassButton
-                title={isAuthenticated ? `Play Again (${maxAttempts - attempts} left)` : 'Play Again'}
-                onPress={() => {
-                  fetchUserAttempts();
-                  startGame();
-                }}
-              />
-            )}
             <GlassButton
-              title="View Leaderboard"
-              onPress={() => {
-                fetchLeaderboard();
-                setGameState('leaderboard');
-              }}
+              title={
+                isAuthenticated && attempts >= maxAttempts
+                  ? 'Play Again (unranked)'
+                  : isAuthenticated
+                  ? `Play Again (${maxAttempts - attempts} left)`
+                  : 'Play Again'
+              }
+              onPress={() => startGame()}
+            />
+            <GlassButton
+              title="Leaderboard"
+              onPress={goToLeaderboard}
               variant="glass"
             />
             <GlassButton title="Share Score" onPress={handleShare} variant="glass" />
@@ -264,6 +280,7 @@ export default function TukacodleScreen() {
     );
   }
 
+  // ─── LEADERBOARD ───
   if (gameState === 'leaderboard') {
     return (
       <MeshGradientBackground>
@@ -319,32 +336,36 @@ export default function TukacodleScreen() {
           )}
 
           <View style={styles.lbActions}>
-            {(!isAuthenticated || attempts < maxAttempts) && (
-              <GlassButton
-                title={isAuthenticated ? `Play Again (${maxAttempts - attempts} left)` : 'Play Again'}
-                onPress={() => {
-                  fetchUserAttempts();
-                  startGame();
-                }}
-              />
-            )}
-            <GlassButton title="Refresh" onPress={fetchLeaderboard} variant="glass" />
+            <GlassButton
+              title={
+                isAuthenticated && attempts >= maxAttempts
+                  ? 'Play Again (unranked)'
+                  : isAuthenticated
+                  ? `Play Again (${maxAttempts - attempts} left)`
+                  : 'Play Again'
+              }
+              onPress={() => startGame()}
+            />
+            <GlassButton title="Refresh" onPress={goToLeaderboard} variant="glass" />
           </View>
-          <Pressable onPress={fetchLeaderboard} style={styles.refreshHint}>
-            <Text style={styles.refreshHintText}>Pull down or tap Refresh to update</Text>
-          </Pressable>
         </ScrollView>
       </MeshGradientBackground>
     );
   }
 
-  // Playing state
+  // ─── PLAYING ───
   return (
     <MeshGradientBackground>
       <View style={[styles.container, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + TAB_BAR_HEIGHT }]}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Tukacodle</Text>
-          <Text style={styles.subtitle}>Which photo has a higher ELO?</Text>
+        {/* Header with leaderboard nav */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>Tukacodle</Text>
+            <Text style={styles.subtitle}>Which photo has a higher ELO?</Text>
+          </View>
+          <Pressable onPress={goToLeaderboard} style={styles.lbButton}>
+            <Text style={styles.lbButtonText}>🏆</Text>
+          </Pressable>
         </View>
 
         <View style={styles.statsRow}>
@@ -475,8 +496,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
   },
-  header: {
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     marginBottom: Spacing.sm,
+  },
+  headerText: {
+    flex: 1,
+  },
+  lbButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  lbButtonText: {
+    fontSize: 20,
   },
   title: {
     ...Typography.largeTitle,
@@ -585,6 +624,7 @@ const styles = StyleSheet.create({
   gameOverActions: {
     gap: Spacing.md,
     alignItems: 'center',
+    width: '100%',
   },
   emptyText: {
     ...Typography.body,
@@ -646,13 +686,5 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     alignItems: 'center',
     marginTop: Spacing.xl,
-  },
-  refreshHint: {
-    alignItems: 'center',
-    marginTop: Spacing.md,
-  },
-  refreshHintText: {
-    ...Typography.caption1,
-    color: Colors.text.tertiary,
   },
 });
