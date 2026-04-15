@@ -9,7 +9,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { BlurView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -26,7 +25,11 @@ import { useAuthStore } from '../../src/store/authStore';
 import api from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const REACTION_TYPES = ['❤️', '🔥'];
+
+const REACTION_MAP: { emoji: string; type: string }[] = [
+  { emoji: '❤️', type: 'heart' },
+  { emoji: '🔥', type: 'fire' },
+];
 
 export default function PublicProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
@@ -68,11 +71,11 @@ export default function PublicProfileScreen() {
     }
   };
 
-  const handleReaction = async (photoId: number, type: string) => {
+  const handleReaction = async (photoId: number, reactionType: string) => {
     if (!isAuthenticated) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await api.post(`/photos/${photoId}/react/`, { reaction_type: type });
+      await api.post(`/photos/${photoId}/react/`, { reaction_type: reactionType });
       fetchProfile();
     } catch (e) {
       console.error(e);
@@ -108,9 +111,7 @@ export default function PublicProfileScreen() {
           onPress={() => router.back()}
           style={[styles.backBtn, { top: insets.top + Spacing.sm }]}
         >
-          <BlurView intensity={40} tint="light" style={styles.backBlur}>
-            <Text style={styles.backText}>‹</Text>
-          </BlurView>
+          <Text style={styles.backText}>‹</Text>
         </Pressable>
 
         {/* Banner */}
@@ -155,7 +156,7 @@ export default function PublicProfileScreen() {
           {isAuthenticated && Number(userId) !== user?.id && (
             <View style={styles.actions}>
               {friendshipStatus === 'friends' ? (
-                <GlassButton title="✓ Friends" onPress={() => {}} variant="glass" disabled />
+                <GlassButton title="Friends" onPress={() => {}} variant="glass" disabled />
               ) : friendshipStatus === 'pending_sent' ? (
                 <GlassButton title="Request Sent" onPress={() => {}} variant="glass" disabled />
               ) : friendshipStatus === 'pending_received' ? (
@@ -167,7 +168,7 @@ export default function PublicProfileScreen() {
                 <GlassButton title="Add Friend" onPress={handleAddFriend} />
               )}
               <GlassButton
-                title="💬 Message"
+                title="Message"
                 onPress={() => router.push({ pathname: '/(tabs)/profile', params: { tab: 'messages' } })}
                 variant="glass"
               />
@@ -200,26 +201,22 @@ export default function PublicProfileScreen() {
             ))}
           </View>
 
-          {/* Achievements */}
+          {/* Achievements - grid layout */}
           {achievements.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Achievements</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.achievementsScroll}
-              >
+              <View style={styles.achievementsGrid}>
                 {achievements.map((a: any, i: number) => (
                   <GlassCard key={i} style={styles.achievementCard}>
                     <Text style={styles.achievementIcon}>
                       {a.achievement?.icon || '🏅'}
                     </Text>
-                    <Text style={styles.achievementName} numberOfLines={1}>
+                    <Text style={styles.achievementName} numberOfLines={2}>
                       {a.achievement?.name}
                     </Text>
                   </GlassCard>
                 ))}
-              </ScrollView>
+              </View>
             </>
           )}
 
@@ -237,13 +234,13 @@ export default function PublicProfileScreen() {
                     {/* Quick reactions under photo */}
                     {isAuthenticated && (
                       <View style={styles.quickReactions}>
-                        {REACTION_TYPES.map((type) => (
+                        {REACTION_MAP.map(({ emoji, type }) => (
                           <Pressable
                             key={type}
                             onPress={() => handleReaction(photo.id, type)}
                             style={styles.quickReactionBtn}
                           >
-                            <Text style={{ fontSize: 16 }}>{type}</Text>
+                            <Text style={{ fontSize: 16 }}>{emoji}</Text>
                           </Pressable>
                         ))}
                       </View>
@@ -279,15 +276,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: Spacing.lg,
     zIndex: 10,
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  backBlur: {
     width: 36,
     height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
   backText: {
     fontSize: 28,
@@ -384,15 +378,16 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     marginTop: 2,
   },
-  achievementsScroll: {
+  achievementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
     marginBottom: Spacing.xl,
-    marginHorizontal: -Spacing.lg,
-    paddingHorizontal: Spacing.lg,
   },
   achievementCard: {
-    width: 100,
+    width: (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.sm * 2) / 3,
     alignItems: 'center',
-    marginRight: Spacing.sm,
+    paddingVertical: Spacing.md,
   },
   achievementIcon: {
     fontSize: 28,

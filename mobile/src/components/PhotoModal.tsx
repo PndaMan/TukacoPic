@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,6 +11,7 @@ import {
   Platform,
   Dimensions,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
@@ -22,7 +23,12 @@ import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const REACTION_TYPES = ['❤️', '🔥', '😂', '😍', '👍', '😮'];
+
+// Map display emoji to backend reaction_type values
+const REACTION_MAP: { emoji: string; type: string }[] = [
+  { emoji: '❤️', type: 'heart' },
+  { emoji: '🔥', type: 'fire' },
+];
 
 interface PhotoModalProps {
   photoId: number | null;
@@ -36,10 +42,15 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { isAuthenticated, user } = useAuthStore();
+  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (photoId && visible) {
       fetchPhoto();
+    }
+    if (!visible) {
+      setPhoto(null);
+      setComment('');
     }
   }, [photoId, visible]);
 
@@ -56,15 +67,18 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
     }
   };
 
-  const handleReaction = async (type: string) => {
+  const handleReaction = async (reactionType: string) => {
     if (!isAuthenticated || !photoId) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const isCurrentReaction = photo?.user_reaction === type;
+      const userReactions: string[] = photo?.user_reaction || [];
+      const isCurrentReaction = userReactions.includes(reactionType);
       if (isCurrentReaction) {
-        await api.post(`/photos/${photoId}/unreact/`);
+        await api.delete(`/photos/${photoId}/unreact/`, {
+          data: { reaction_type: reactionType },
+        });
       } else {
-        await api.post(`/photos/${photoId}/react/`, { reaction_type: type });
+        await api.post(`/photos/${photoId}/react/`, { reaction_type: reactionType });
       }
       fetchPhoto();
     } catch (e) {
@@ -75,8 +89,9 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
   const handleComment = async () => {
     if (!comment.trim() || !photoId) return;
     setSubmitting(true);
+    Keyboard.dismiss();
     try {
-      await api.post(`/photos/${photoId}/comments/`, { text: comment.trim() });
+      await api.post(`/photos/${photoId}/comments/`, { content: comment.trim() });
       setComment('');
       fetchPhoto();
     } catch (e) {
@@ -101,6 +116,7 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
+          keyboardVerticalOffset={0}
         >
           <Pressable style={styles.dismissArea} onPress={onClose} />
           <View style={styles.sheet}>
@@ -116,8 +132,10 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
                   />
                 ) : photo ? (
                   <ScrollView
+                    ref={scrollRef}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
                   >
                     {/* Photo */}
                     <Image
@@ -147,19 +165,11 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
 
                     {/* Reactions */}
                     <View style={styles.reactions}>
-                      {REACTION_TYPES.map((type) => {
-                        // reactions can be {} (object keyed by type) or [] (array)
+                      {REACTION_MAP.map(({ emoji, type }) => {
                         const reactions = photo.reactions || {};
-                        let count = 0;
-                        if (Array.isArray(reactions)) {
-                          count = reactions.find((r: any) => r.reaction_type === type)?.count || 0;
-                        } else if (typeof reactions === 'object') {
-                          count = reactions[type] || 0;
-                        }
-                        const userReaction = photo.user_reaction;
-                        const isActive = Array.isArray(userReaction)
-                          ? userReaction.includes(type)
-                          : userReaction === type;
+                        const count = reactions[type] || 0;
+                        const userReactions: string[] = photo.user_reaction || [];
+                        const isActive = userReactions.includes(type);
                         return (
                           <Pressable
                             key={type}
@@ -170,7 +180,7 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
                             ]}
                             disabled={!isAuthenticated}
                           >
-                            <Text style={styles.reactionEmoji}>{type}</Text>
+                            <Text style={styles.reactionEmoji}>{emoji}</Text>
                             {count > 0 && (
                               <Text
                                 style={[
@@ -203,7 +213,7 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
                               {new Date(c.created_at).toLocaleDateString()}
                             </Text>
                           </View>
-                          <Text style={styles.commentText}>{c.text}</Text>
+                          <Text style={styles.commentText}>{c.content}</Text>
                           {user?.id === c.user?.id && (
                             <Pressable
                               onPress={() => handleDeleteComment(c.id)}
@@ -224,6 +234,9 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
                             onChangeText={setComment}
                             maxLength={500}
                             multiline
+                            onFocus={() => {
+                              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+                            }}
                           />
                           <GlassButton
                             title="Post"
@@ -263,7 +276,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BorderRadius.xxl,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   sheetInner: {
     backgroundColor: '#FFFFFF',

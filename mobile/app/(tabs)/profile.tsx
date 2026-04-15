@@ -609,15 +609,15 @@ export default function ProfileScreen() {
               {achievements.length > 0 && (
                 <>
                   <Text style={styles.sectionTitle}>Achievements</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.achievementsScroll}>
+                  <View style={styles.achievementsGrid}>
                     {achievements.map((a: any, i: number) => (
                       <GlassCard key={i} style={styles.achievementCard}>
                         <Text style={styles.achievementIcon}>{a.achievement?.icon || '🏅'}</Text>
-                        <Text style={styles.achievementName} numberOfLines={1}>{a.achievement?.name}</Text>
+                        <Text style={styles.achievementName} numberOfLines={2}>{a.achievement?.name}</Text>
                         <Text style={styles.achievementPoints}>{a.achievement?.points} pts</Text>
                       </GlassCard>
                     ))}
-                  </ScrollView>
+                  </View>
                 </>
               )}
 
@@ -1002,15 +1002,16 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     marginTop: 2,
   },
-  achievementsScroll: {
+  achievementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
     marginBottom: Spacing.xl,
-    marginHorizontal: -Spacing.lg,
-    paddingHorizontal: Spacing.lg,
   },
   achievementCard: {
-    width: 110,
+    width: (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.sm * 2) / 3,
     alignItems: 'center',
-    marginRight: Spacing.sm,
+    paddingVertical: Spacing.md,
   },
   achievementIcon: {
     fontSize: 32,

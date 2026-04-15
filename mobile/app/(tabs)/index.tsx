@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/theme';
-import { PhotoCard, PhotoModal, MeshGradientBackground } from '../../src/components';
+import { PhotoCard, PhotoModal, MeshGradientBackground, GlassButton } from '../../src/components';
 import api from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -19,14 +19,24 @@ export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
   const [photos, setPhotos] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
   const [selectedPhotoId, setSelectedPhotoId] = useState<number | null>(null);
 
   const fetchLeaderboard = useCallback(async () => {
+    setError(false);
     try {
       const res = await api.get('/leaderboard/');
-      setPhotos(res.data.results || res.data || []);
+      const data = res.data;
+      if (Array.isArray(data)) {
+        setPhotos(data);
+      } else if (data?.results && Array.isArray(data.results)) {
+        setPhotos(data.results);
+      } else {
+        setPhotos([]);
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Leaderboard fetch error:', e);
+      setError(true);
     }
   }, []);
 
@@ -49,13 +59,13 @@ export default function LeaderboardScreen() {
   );
 
   return (
-    <MeshGradientBackground variant="cool">
+    <MeshGradientBackground>
       <FlatList
         data={photos}
         renderItem={renderPhoto}
         keyExtractor={(item) => item.id.toString()}
         numColumns={2}
-        columnWrapperStyle={styles.row}
+        columnWrapperStyle={photos.length > 0 ? styles.row : undefined}
         contentContainerStyle={[
           styles.list,
           { paddingTop: insets.top + Spacing.lg, paddingBottom: insets.bottom + 100 },
@@ -78,8 +88,27 @@ export default function LeaderboardScreen() {
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>🏆</Text>
-            <Text style={styles.emptyText}>No photos yet</Text>
+            {error ? (
+              <>
+                <Text style={styles.emptyText}>Failed to load leaderboard</Text>
+                <GlassButton
+                  title="Retry"
+                  onPress={fetchLeaderboard}
+                  style={{ marginTop: Spacing.lg }}
+                />
+              </>
+            ) : (
+              <>
+                <Text style={styles.emptyIcon}>🏆</Text>
+                <Text style={styles.emptyText}>No photos yet</Text>
+                <GlassButton
+                  title="Refresh"
+                  onPress={fetchLeaderboard}
+                  variant="glass"
+                  style={{ marginTop: Spacing.lg }}
+                />
+              </>
+            )}
           </View>
         }
       />
