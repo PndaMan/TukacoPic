@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../src/store/authStore';
 import { Colors } from '../src/theme';
+import { initializeNotifications } from '../src/services/notifications';
 
 export default function RootLayout() {
   const { checkAuth, isAuthenticated, isInitialized } = useAuthStore();
@@ -30,6 +31,13 @@ export default function RootLayout() {
       router.replace('/(tabs)');
     }
   }, [ready, isAuthenticated, segments]);
+
+  // Set up daily notifications once authenticated
+  useEffect(() => {
+    if (ready && isAuthenticated) {
+      initializeNotifications();
+    }
+  }, [ready, isAuthenticated]);
 
   if (!ready) {
     return (

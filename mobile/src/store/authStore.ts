@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
+import { cancelAllReminders } from '../services/notifications';
 
 interface User {
   id: number;
@@ -92,6 +93,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: false,
     });
     try {
+      await cancelAllReminders();
       await SecureStore.deleteItemAsync('accessToken');
       await SecureStore.deleteItemAsync('refreshToken');
     } catch {
