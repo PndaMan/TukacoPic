@@ -43,7 +43,12 @@ export default function TukacodleScreen() {
   const { isAuthenticated } = useAuthStore();
   const [gameState, setGameState] = useState<GameState>('loading');
   const [photos, setPhotos] = useState<any>(null);
-  const [streak, setStreak] = useState(0);
+  const [streak, setStreakState] = useState(0);
+  const streakRef = useRef(0);
+  const setStreak = (val: number) => {
+    streakRef.current = val;
+    setStreakState(val);
+  };
   const [attempts, setAttempts] = useState(0);
   const [maxAttempts, setMaxAttempts] = useState(3);
   const [chosen, setChosen] = useState<number | null>(null);
@@ -167,7 +172,7 @@ export default function TukacodleScreen() {
       const res = await api.post('/tukacodle/guess/', {
         chosen_id: photoId,
         other_id: otherId,
-        current_streak: streak,
+        current_streak: streakRef.current,
       });
       const isCorrect = res.data.correct;
       setCorrect(isCorrect);
@@ -182,11 +187,11 @@ export default function TukacodleScreen() {
 
       if (isCorrect) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        const newStreak = res.data.current_streak ?? streak + 1;
+        const newStreak = res.data.current_streak ?? streakRef.current + 1;
         setStreak(newStreak);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        const score = res.data.final_score ?? streak;
+        const score = res.data.final_score ?? streakRef.current;
         setFinalScore(score);
       }
 
@@ -194,13 +199,20 @@ export default function TukacodleScreen() {
         if (isCorrect) {
           scale1.value = 1;
           scale2.value = 1;
-          if (res.data.next_photo) {
+          if (res.data.game_over) {
+            // All photos exhausted — show game over with the winning score
+            const score = res.data.final_score ?? (res.data.current_streak ?? streakRef.current + 1);
+            setFinalScore(score);
+            await fetchUserAttempts();
+            setGameStateTracked('game_over');
+          } else if (res.data.next_photo) {
             const nextPhotos = { photo1: photos[isFirst ? 'photo1' : 'photo2'], photo2: res.data.next_photo };
             setPhotos(nextPhotos);
             Image.prefetch(getImageUrl(res.data.next_photo.image));
             setChosen(null);
             setCorrect(null);
           } else {
+            // Fallback: no next_photo and no game_over flag — restart
             startGame();
           }
         } else {

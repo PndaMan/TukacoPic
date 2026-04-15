@@ -793,10 +793,22 @@ def tukacodle_guess(request):
         photos = all_photos.exclude(id=chosen_id).exclude(id__in=top_20_ids)
 
         if photos.count() == 0:
+            # All photos exhausted — save the score
+            final_score = current_streak + 1
+            if request.user.is_authenticated:
+                today = date.today()
+                attempts_today = TukacodleScore.objects.filter(user=request.user, date=today).count()
+                if attempts_today < 3:
+                    TukacodleScore.objects.create(
+                        user=request.user,
+                        date=today,
+                        score=final_score,
+                        attempt_number=attempts_today + 1
+                    )
             return Response({
                 'correct': True,
                 'game_over': True,
-                'final_score': current_streak + 1,
+                'final_score': final_score,
                 'message': 'Congratulations! You\'ve compared all photos!'
             })
 
