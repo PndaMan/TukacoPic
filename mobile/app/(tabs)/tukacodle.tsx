@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
@@ -54,18 +55,20 @@ export default function TukacodleScreen() {
   const scale1 = useSharedValue(1);
   const scale2 = useSharedValue(1);
 
-  // Fetch user's attempt count from server
+  // Fetch user's attempt count from server, returns the data
   const fetchUserAttempts = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) return null;
     try {
       const res = await api.get('/tukacodle/user-score/');
       if (res.data) {
         setAttempts(res.data.attempts_used || 0);
         setMaxAttempts(res.data.max_attempts || 3);
+        return res.data;
       }
     } catch {
       // User may not have played today yet
     }
+    return null;
   }, [isAuthenticated]);
 
   const startGame = useCallback(async () => {
@@ -87,7 +90,8 @@ export default function TukacodleScreen() {
       Image.prefetch(getImageUrl(normalized.photo2.image));
     } catch (e: any) {
       if (e.response?.status === 400) {
-        setFinalScore(e.response.data.score || streak);
+        setFinalScore(e.response.data.score ?? streak);
+        await fetchUserAttempts();
         fetchLeaderboard();
         setGameState('game_over');
       }
@@ -114,10 +118,25 @@ export default function TukacodleScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchUserAttempts();
-    startGame();
-  }, []);
+  // On tab focus: check attempts and route to the right state
+  useFocusEffect(
+    useCallback(() => {
+      const init = async () => {
+        const data = await fetchUserAttempts();
+        const used = data?.attempts_used || 0;
+        const max = data?.max_attempts || 3;
+        if (isAuthenticated && used >= max) {
+          // All attempts used — go straight to leaderboard
+          fetchLeaderboard();
+          setGameState('leaderboard');
+        } else if (gameState === 'loading' || gameState === 'leaderboard') {
+          // Has attempts left — start a game
+          startGame();
+        }
+      };
+      init();
+    }, [isAuthenticated])
+  );
 
   const handleGuess = async (photoId: number, isFirst: boolean) => {
     if (chosen !== null || !photos) return;
@@ -154,7 +173,7 @@ export default function TukacodleScreen() {
         setFinalScore(score);
       }
 
-      setTimeout(() => {
+      setTimeout(async () => {
         if (isCorrect) {
           scale1.value = 1;
           scale2.value = 1;
@@ -168,8 +187,8 @@ export default function TukacodleScreen() {
             startGame();
           }
         } else {
-          // Refresh attempts from server after game over
-          fetchUserAttempts();
+          // Refresh attempts from server before showing game over
+          await fetchUserAttempts();
           setGameState('game_over');
         }
       }, 800);
@@ -221,14 +240,6 @@ export default function TukacodleScreen() {
           </GlassCard>
 
           <View style={styles.gameOverActions}>
-            <GlassButton title="Share Score" onPress={handleShare} variant="glass" />
-            <GlassButton
-              title="View Leaderboard"
-              onPress={() => {
-                fetchLeaderboard();
-                setGameState('leaderboard');
-              }}
-            />
             {(!isAuthenticated || attempts < maxAttempts) && (
               <GlassButton
                 title={isAuthenticated ? `Play Again (${maxAttempts - attempts} left)` : 'Play Again'}
@@ -236,9 +247,17 @@ export default function TukacodleScreen() {
                   fetchUserAttempts();
                   startGame();
                 }}
-                variant="secondary"
               />
             )}
+            <GlassButton
+              title="View Leaderboard"
+              onPress={() => {
+                fetchLeaderboard();
+                setGameState('leaderboard');
+              }}
+              variant="glass"
+            />
+            <GlassButton title="Share Score" onPress={handleShare} variant="glass" />
           </View>
         </ScrollView>
       </MeshGradientBackground>
@@ -260,7 +279,12 @@ export default function TukacodleScreen() {
           {userScore && (
             <GlassCard style={styles.userScoreCard}>
               <Text style={styles.userScoreLabel}>Your Best Today</Text>
-              <Text style={styles.userScoreValue}>{userScore.highest_score ?? userScore.best_score ?? 0}</Text>
+              <Text style={styles.userScoreValue}>{userScore.highest_score ?? 0}</Text>
+              {userScore.all_scores && userScore.all_scores.length > 1 && (
+                <Text style={styles.allScores}>
+                  All attempts: {userScore.all_scores.join(', ')}
+                </Text>
+              )}
               <Text style={styles.userAttempts}>
                 Attempts: {userScore.attempts_used || 0}/{userScore.max_attempts || 3}
               </Text>
@@ -306,6 +330,9 @@ export default function TukacodleScreen() {
             )}
             <GlassButton title="Refresh" onPress={fetchLeaderboard} variant="glass" />
           </View>
+          <Pressable onPress={fetchLeaderboard} style={styles.refreshHint}>
+            <Text style={styles.refreshHintText}>Pull down or tap Refresh to update</Text>
+          </Pressable>
         </ScrollView>
       </MeshGradientBackground>
     );
@@ -583,6 +610,11 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.sm,
     textAlign: 'center',
   },
+  allScores: {
+    ...Typography.caption1,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.xs,
+  },
   userAttempts: {
     ...Typography.caption1,
     color: Colors.text.secondary,
@@ -614,5 +646,13 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     alignItems: 'center',
     marginTop: Spacing.xl,
+  },
+  refreshHint: {
+    alignItems: 'center',
+    marginTop: Spacing.md,
+  },
+  refreshHintText: {
+    ...Typography.caption1,
+    color: Colors.text.tertiary,
   },
 });
