@@ -55,14 +55,6 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Close button */}
-          <Pressable
-            onPress={() => router.back()}
-            style={[styles.closeBtn, { top: insets.top + Spacing.md }]}
-          >
-            <Text style={styles.closeText}>✕</Text>
-          </Pressable>
-
           <Text style={styles.logo}>TukacoPic</Text>
           <Text style={styles.title}>Welcome Back</Text>
 

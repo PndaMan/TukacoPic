@@ -6,7 +6,6 @@ import {
   Text,
   TextInputProps,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { Colors, Typography, BorderRadius, Spacing } from '../theme';
 
 interface GlassInputProps extends TextInputProps {
@@ -34,24 +33,22 @@ export function GlassInput({
           error ? styles.error : null,
         ]}
       >
-        <BlurView intensity={30} tint="light" style={styles.blur}>
-          <View style={styles.inner}>
-            {icon && <View style={styles.icon}>{icon}</View>}
-            <TextInput
-              style={[styles.input, style]}
-              placeholderTextColor={Colors.text.tertiary}
-              onFocus={(e) => {
-                setFocused(true);
-                props.onFocus?.(e);
-              }}
-              onBlur={(e) => {
-                setFocused(false);
-                props.onBlur?.(e);
-              }}
-              {...props}
-            />
-          </View>
-        </BlurView>
+        <View style={styles.inner}>
+          {icon && <View style={styles.icon}>{icon}</View>}
+          <TextInput
+            style={[styles.input, style]}
+            placeholderTextColor={Colors.text.tertiary}
+            onFocus={(e) => {
+              setFocused(true);
+              props.onFocus?.(e);
+            }}
+            onBlur={(e) => {
+              setFocused(false);
+              props.onBlur?.(e);
+            }}
+            {...props}
+          />
+        </View>
       </View>
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
@@ -72,7 +69,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   focused: {
     borderColor: Colors.primary,
@@ -80,13 +77,10 @@ const styles = StyleSheet.create({
   error: {
     borderColor: Colors.systemRed,
   },
-  blur: {
-    overflow: 'hidden',
-  },
   inner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#F8F8FA',
     paddingHorizontal: Spacing.lg,
   },
   icon: {

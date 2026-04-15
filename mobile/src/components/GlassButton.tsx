@@ -7,9 +7,8 @@ import {
   ActivityIndicator,
   ViewStyle,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { Colors, Typography, BorderRadius, Spacing } from '../theme';
+import { Colors, BorderRadius, Spacing } from '../theme';
 
 interface GlassButtonProps {
   title: string;
@@ -47,26 +46,23 @@ export function GlassButton({
         disabled={disabled || loading}
         style={({ pressed }) => [
           styles.glassOuter,
+          sizeStyles[size],
           fullWidth && styles.fullWidth,
           pressed && styles.pressed,
           disabled && styles.disabled,
           style,
         ]}
       >
-        <BlurView intensity={40} tint="light" style={styles.glassBlur}>
-          <View style={[styles.glassInner, sizeStyles[size]]}>
-            {loading ? (
-              <ActivityIndicator color={Colors.text.primary} size="small" />
-            ) : (
-              <View style={styles.content}>
-                {icon}
-                <Text style={[styles.glassText, sizeTextStyles[size]]}>
-                  {title}
-                </Text>
-              </View>
-            )}
+        {loading ? (
+          <ActivityIndicator color={Colors.text.primary} size="small" />
+        ) : (
+          <View style={styles.content}>
+            {icon}
+            <Text style={[styles.glassText, sizeTextStyles[size]]}>
+              {title}
+            </Text>
           </View>
-        </BlurView>
+        )}
       </Pressable>
     );
   }
@@ -136,13 +132,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.pill,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  glassBlur: {
-    overflow: 'hidden',
-  },
-  glassInner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: '#F0F0F5',
     alignItems: 'center',
     justifyContent: 'center',
   },

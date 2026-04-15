@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -32,7 +31,9 @@ import api from '../../src/services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PHOTO_WIDTH = SCREEN_WIDTH - Spacing.lg * 2;
-const PHOTO_HEIGHT = (SCREEN_HEIGHT - 320) / 2;
+const PHOTO_HEIGHT = (SCREEN_HEIGHT - 340) / 2;
+
+const TAB_BAR_HEIGHT = 80;
 
 type GameState = 'loading' | 'playing' | 'game_over' | 'leaderboard';
 
@@ -53,8 +54,23 @@ export default function TukacodleScreen() {
   const scale1 = useSharedValue(1);
   const scale2 = useSharedValue(1);
 
+  // Fetch user's attempt count from server
+  const fetchUserAttempts = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await api.get('/tukacodle/user-score/');
+      if (res.data) {
+        setAttempts(res.data.attempts_used || 0);
+        setMaxAttempts(res.data.max_attempts || 3);
+      }
+    } catch {
+      // User may not have played today yet
+    }
+  }, [isAuthenticated]);
+
   const startGame = useCallback(async () => {
     setGameState('loading');
+    setStreak(0);
     try {
       const res = await api.post('/tukacodle/start/');
       const data = res.data;
@@ -67,7 +83,6 @@ export default function TukacodleScreen() {
       scale1.value = 1;
       scale2.value = 1;
       setGameState('playing');
-      // Prefetch images
       Image.prefetch(getImageUrl(normalized.photo1.image));
       Image.prefetch(getImageUrl(normalized.photo2.image));
     } catch (e: any) {
@@ -87,14 +102,19 @@ export default function TukacodleScreen() {
           ? api.get('/tukacodle/user-score/')
           : Promise.resolve({ data: null }),
       ]);
-      setLeaderboard(lbRes.data.results || lbRes.data || []);
-      setUserScore(scoreRes.data);
+      const lbData = lbRes.data?.results || lbRes.data;
+      setLeaderboard(Array.isArray(lbData) ? lbData : []);
+      if (scoreRes.data) {
+        setUserScore(scoreRes.data);
+        setAttempts(scoreRes.data.attempts_used || 0);
+      }
     } catch (e) {
       console.error(e);
     }
   };
 
   useEffect(() => {
+    fetchUserAttempts();
     startGame();
   }, []);
 
@@ -144,6 +164,8 @@ export default function TukacodleScreen() {
             startGame();
           }
         } else {
+          // Refresh attempts from server after game over
+          fetchUserAttempts();
           setGameState('game_over');
         }
       }, 800);
@@ -171,7 +193,7 @@ export default function TukacodleScreen() {
 
   if (gameState === 'loading') {
     return (
-      <MeshGradientBackground variant="warm">
+      <MeshGradientBackground>
         <View style={[styles.center, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
@@ -181,11 +203,11 @@ export default function TukacodleScreen() {
 
   if (gameState === 'game_over') {
     return (
-      <MeshGradientBackground variant="warm">
+      <MeshGradientBackground>
         <ScrollView
           contentContainerStyle={[
             styles.center,
-            { paddingTop: insets.top + Spacing.huge, paddingBottom: insets.bottom + 100 },
+            { paddingTop: insets.top + Spacing.huge, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + Spacing.lg },
           ]}
         >
           <Text style={styles.gameOverTitle}>Game Over</Text>
@@ -206,7 +228,10 @@ export default function TukacodleScreen() {
             {isAuthenticated && attempts < maxAttempts && (
               <GlassButton
                 title={`Play Again (${maxAttempts - attempts} left)`}
-                onPress={startGame}
+                onPress={() => {
+                  fetchUserAttempts();
+                  startGame();
+                }}
                 variant="secondary"
               />
             )}
@@ -218,11 +243,11 @@ export default function TukacodleScreen() {
 
   if (gameState === 'leaderboard') {
     return (
-      <MeshGradientBackground variant="warm">
+      <MeshGradientBackground>
         <ScrollView
           contentContainerStyle={[
             styles.leaderboardContent,
-            { paddingTop: insets.top + Spacing.lg, paddingBottom: insets.bottom + 100 },
+            { paddingTop: insets.top + Spacing.lg, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + Spacing.lg },
           ]}
         >
           <Text style={styles.title}>Tukacodle</Text>
@@ -233,37 +258,46 @@ export default function TukacodleScreen() {
               <Text style={styles.userScoreLabel}>Your Best Today</Text>
               <Text style={styles.userScoreValue}>{userScore.best_score || 0}</Text>
               <Text style={styles.userAttempts}>
-                Attempts: {userScore.attempts_used}/{userScore.max_attempts || 3}
+                Attempts: {userScore.attempts_used || 0}/{userScore.max_attempts || 3}
               </Text>
             </GlassCard>
           )}
 
-          {leaderboard.map((entry: any, i: number) => (
-            <GlassCard key={i} style={styles.lbEntry}>
-              <View style={styles.lbRow}>
-                <Text
-                  style={[
-                    styles.lbRank,
-                    i < 3 && {
-                      color: [Colors.rank.gold, Colors.rank.silver, Colors.rank.bronze][i],
-                    },
-                  ]}
-                >
-                  #{i + 1}
-                </Text>
-                <Text style={styles.lbName} numberOfLines={1}>
-                  {entry.user?.username || entry.username}
-                </Text>
-                <Text style={styles.lbScore}>{entry.score}</Text>
-              </View>
+          {leaderboard.length > 0 ? (
+            leaderboard.map((entry: any, i: number) => (
+              <GlassCard key={entry?.id || i} style={styles.lbEntry}>
+                <View style={styles.lbRow}>
+                  <Text
+                    style={[
+                      styles.lbRank,
+                      i < 3 && {
+                        color: [Colors.rank.gold, Colors.rank.silver, Colors.rank.bronze][i],
+                      },
+                    ]}
+                  >
+                    #{i + 1}
+                  </Text>
+                  <Text style={styles.lbName} numberOfLines={1}>
+                    {entry?.user?.username || entry?.username || 'Unknown'}
+                  </Text>
+                  <Text style={styles.lbScore}>{entry?.score || 0}</Text>
+                </View>
+              </GlassCard>
+            ))
+          ) : (
+            <GlassCard>
+              <Text style={styles.emptyText}>No scores yet today</Text>
             </GlassCard>
-          ))}
+          )}
 
           <View style={styles.lbActions}>
-            {attempts < maxAttempts && (
+            {isAuthenticated && attempts < maxAttempts && (
               <GlassButton
                 title={`Play Again (${maxAttempts - attempts} left)`}
-                onPress={startGame}
+                onPress={() => {
+                  fetchUserAttempts();
+                  startGame();
+                }}
               />
             )}
             <GlassButton title="Refresh" onPress={fetchLeaderboard} variant="glass" />
@@ -275,8 +309,8 @@ export default function TukacodleScreen() {
 
   // Playing state
   return (
-    <MeshGradientBackground variant="warm">
-      <View style={[styles.container, { paddingTop: insets.top + Spacing.md }]}>
+    <MeshGradientBackground>
+      <View style={[styles.container, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + TAB_BAR_HEIGHT }]}>
         <View style={styles.header}>
           <Text style={styles.title}>Tukacodle</Text>
           <Text style={styles.subtitle}>Which photo has a higher ELO?</Text>
@@ -284,17 +318,13 @@ export default function TukacodleScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.statPill}>
-            <BlurView intensity={30} tint="light" style={styles.statPillBlur}>
-              <Text style={styles.statPillText}>Streak: {streak}</Text>
-            </BlurView>
+            <Text style={styles.statPillText}>Streak: {streak}</Text>
           </View>
           {isAuthenticated && (
             <View style={styles.statPill}>
-              <BlurView intensity={30} tint="light" style={styles.statPillBlur}>
-                <Text style={styles.statPillText}>
-                  Attempts: {attempts}/{maxAttempts}
-                </Text>
-              </BlurView>
+              <Text style={styles.statPillText}>
+                Attempts: {attempts}/{maxAttempts}
+              </Text>
             </View>
           )}
         </View>
@@ -311,7 +341,7 @@ export default function TukacodleScreen() {
                   <View
                     style={[
                       styles.photoCard,
-                      chosen === photos.photo1.id && {
+                      chosen === photos.photo1.id && correct !== null && {
                         borderWidth: 3,
                         borderColor: correct
                           ? Colors.systemGreen
@@ -329,15 +359,13 @@ export default function TukacodleScreen() {
                       placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                     />
                     <View style={styles.photoLabel}>
-                      <BlurView intensity={40} tint="dark" style={{ overflow: 'hidden' }}>
-                        <View style={styles.photoLabelInner}>
-                          <Text style={styles.photoUser}>
-                            {photos.photo1.uploader?.username}
-                          </Text>
-                        </View>
-                      </BlurView>
+                      <View style={styles.photoLabelInner}>
+                        <Text style={styles.photoUser}>
+                          {photos.photo1.uploader?.username}
+                        </Text>
+                      </View>
                     </View>
-                    {chosen === photos.photo1.id && (
+                    {chosen === photos.photo1.id && correct !== null && (
                       <View style={[
                         styles.feedbackOverlay,
                         { backgroundColor: correct ? 'rgba(52, 199, 89, 0.25)' : 'rgba(255, 59, 48, 0.25)' },
@@ -360,7 +388,7 @@ export default function TukacodleScreen() {
                   <View
                     style={[
                       styles.photoCard,
-                      chosen === photos.photo2.id && {
+                      chosen === photos.photo2.id && correct !== null && {
                         borderWidth: 3,
                         borderColor: correct
                           ? Colors.systemGreen
@@ -378,15 +406,13 @@ export default function TukacodleScreen() {
                       placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                     />
                     <View style={styles.photoLabel}>
-                      <BlurView intensity={40} tint="dark" style={{ overflow: 'hidden' }}>
-                        <View style={styles.photoLabelInner}>
-                          <Text style={styles.photoUser}>
-                            {photos.photo2.uploader?.username}
-                          </Text>
-                        </View>
-                      </BlurView>
+                      <View style={styles.photoLabelInner}>
+                        <Text style={styles.photoUser}>
+                          {photos.photo2.uploader?.username}
+                        </Text>
+                      </View>
                     </View>
-                    {chosen === photos.photo2.id && (
+                    {chosen === photos.photo2.id && correct !== null && (
                       <View style={[
                         styles.feedbackOverlay,
                         { backgroundColor: correct ? 'rgba(52, 199, 89, 0.25)' : 'rgba(255, 59, 48, 0.25)' },
@@ -413,7 +439,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   center: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
@@ -438,11 +464,9 @@ const styles = StyleSheet.create({
   statPill: {
     borderRadius: BorderRadius.pill,
     overflow: 'hidden',
-  },
-  statPillBlur: {
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
-    overflow: 'hidden',
   },
   statPillText: {
     ...Typography.subheadline,
@@ -482,7 +506,7 @@ const styles = StyleSheet.create({
   photoLabelInner: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
   },
   photoUser: {
     ...Typography.subheadline,
@@ -510,6 +534,7 @@ const styles = StyleSheet.create({
   },
   scoreCard: {
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: Spacing.xxl,
     paddingHorizontal: Spacing.huge,
     marginBottom: Spacing.xl,
@@ -518,15 +543,22 @@ const styles = StyleSheet.create({
     fontSize: 72,
     fontWeight: '800',
     color: Colors.primary,
+    textAlign: 'center',
   },
   scoreLabel: {
     ...Typography.headline,
     color: Colors.text.secondary,
     marginTop: Spacing.sm,
+    textAlign: 'center',
   },
   gameOverActions: {
     gap: Spacing.md,
     alignItems: 'center',
+  },
+  emptyText: {
+    ...Typography.body,
+    color: Colors.text.secondary,
+    textAlign: 'center',
   },
   leaderboardContent: {
     paddingHorizontal: Spacing.lg,
@@ -545,6 +577,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.primary,
     marginVertical: Spacing.sm,
+    textAlign: 'center',
   },
   userAttempts: {
     ...Typography.caption1,

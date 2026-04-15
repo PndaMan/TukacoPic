@@ -86,12 +86,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    await SecureStore.deleteItemAsync('accessToken');
-    await SecureStore.deleteItemAsync('refreshToken');
+    // Set state first to prevent further authenticated requests
     set({
       user: null,
       isAuthenticated: false,
     });
+    try {
+      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync('refreshToken');
+    } catch {
+      // Ignore cleanup errors
+    }
   },
 
   checkAuth: async () => {

@@ -1,7 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 import { GlassTabBar } from '../../src/components';
-import { useAuthStore } from '../../src/store/authStore';
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
@@ -19,8 +18,6 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 }
 
 export default function TabLayout() {
-  const { isAuthenticated } = useAuthStore();
-
   return (
     <Tabs
       tabBar={(props) => <GlassTabBar {...props} />}
@@ -44,7 +41,6 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => (
             <TabIcon name="vote" focused={focused} />
           ),
-          href: isAuthenticated ? undefined : null,
         }}
       />
       <Tabs.Screen
@@ -54,7 +50,6 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => (
             <TabIcon name="upload" focused={focused} />
           ),
-          href: isAuthenticated ? undefined : null,
         }}
       />
       <Tabs.Screen
@@ -73,7 +68,6 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => (
             <TabIcon name="profile" focused={focused} />
           ),
-          href: isAuthenticated ? undefined : null,
         }}
       />
     </Tabs>

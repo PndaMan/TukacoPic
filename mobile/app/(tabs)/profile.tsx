@@ -344,7 +344,7 @@ export default function ProfileScreen() {
         >
           {/* Chat header */}
           <View style={[styles.chatHeader, { paddingTop: insets.top }]}>
-            <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFillObject} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#FFFFFF' }]} />
             <View style={styles.chatHeaderInner}>
               <Pressable
                 onPress={() => setSelectedFriend(null)}
@@ -407,8 +407,7 @@ export default function ProfileScreen() {
             }
           />
 
-          <View style={[styles.inputBar, { paddingBottom: insets.bottom + Spacing.sm }]}>
-            <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFillObject} />
+          <View style={[styles.inputBar, { paddingBottom: insets.bottom + 80 + Spacing.sm }]}>
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.msgInput}

@@ -13,7 +13,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Colors, Typography, BorderRadius, Spacing } from '../theme';
 import { GlassButton } from './GlassButton';
@@ -98,15 +97,14 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <BlurView intensity={40} tint="dark" style={styles.backdrop}>
+      <View style={styles.backdrop}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
         >
           <Pressable style={styles.dismissArea} onPress={onClose} />
           <View style={styles.sheet}>
-            <BlurView intensity={80} tint="light" style={styles.sheetBlur}>
-              <View style={styles.sheetInner}>
+            <View style={styles.sheetInner}>
                 {/* Handle */}
                 <View style={styles.handle} />
 
@@ -239,11 +237,10 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
                     </View>
                   </ScrollView>
                 ) : null}
-              </View>
-            </BlurView>
+            </View>
           </View>
         </KeyboardAvoidingView>
-      </BlurView>
+      </View>
     </Modal>
   );
 }
@@ -251,6 +248,7 @@ export function PhotoModal({ photoId, visible, onClose }: PhotoModalProps) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   container: {
     flex: 1,
@@ -267,11 +265,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.4)',
   },
-  sheetBlur: {
-    overflow: 'hidden',
-  },
   sheetInner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#FFFFFF',
   },
   handle: {
     width: 36,

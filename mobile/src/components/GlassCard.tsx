@@ -1,11 +1,10 @@
 import React from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
 import { BorderRadius, Spacing } from '../theme';
 
 interface GlassCardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   intensity?: number;
   tint?: 'light' | 'dark' | 'default';
   padding?: boolean;
@@ -14,17 +13,11 @@ interface GlassCardProps {
 export function GlassCard({
   children,
   style,
-  intensity = 60,
-  tint = 'light',
   padding = true,
 }: GlassCardProps) {
   return (
-    <View style={[styles.container, style]}>
-      <BlurView intensity={intensity} tint={tint} style={styles.blur}>
-        <View style={[styles.inner, padding && styles.padded]}>
-          {children}
-        </View>
-      </BlurView>
+    <View style={[styles.container, padding && styles.padded, style]}>
+      {children}
     </View>
   );
 }
@@ -34,13 +27,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.glass,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  blur: {
-    overflow: 'hidden',
-  },
-  inner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: '#F8F8FA',
   },
   padded: {
     padding: Spacing.lg,

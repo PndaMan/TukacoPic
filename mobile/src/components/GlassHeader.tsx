@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors, Typography, Spacing } from '../theme';
@@ -23,28 +22,26 @@ export function GlassHeader({
 
   return (
     <View style={[styles.wrapper, { paddingTop: insets.top }]}>
-      <BlurView intensity={80} tint="light" style={styles.blur}>
-        <View style={[styles.inner, large && styles.innerLarge]}>
-          <View style={styles.row}>
-            {showBack ? (
-              <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                <Text style={styles.backText}>{'‹'}</Text>
-              </Pressable>
-            ) : (
-              <View style={styles.spacer} />
-            )}
-            {!large && (
-              <Text style={styles.title} numberOfLines={1}>
-                {title}
-              </Text>
-            )}
-            <View style={styles.rightSlot}>{rightAction}</View>
-          </View>
-          {large && (
-            <Text style={styles.largeTitle}>{title}</Text>
+      <View style={[styles.inner, large && styles.innerLarge]}>
+        <View style={styles.row}>
+          {showBack ? (
+            <Pressable onPress={() => router.back()} style={styles.backBtn}>
+              <Text style={styles.backText}>{'‹'}</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.spacer} />
           )}
+          {!large && (
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
+          )}
+          <View style={styles.rightSlot}>{rightAction}</View>
         </View>
-      </BlurView>
+        {large && (
+          <Text style={styles.largeTitle}>{title}</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -57,13 +54,10 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  blur: {
-    overflow: 'hidden',
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: '#FFFFFF',
   },
   inner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
   },

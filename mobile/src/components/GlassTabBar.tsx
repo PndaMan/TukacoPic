@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, View, Pressable, Text } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Colors, Spacing } from '../theme';
@@ -12,55 +11,53 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
   return (
     <View style={[styles.wrapper, { paddingBottom: insets.bottom }]}>
       <View style={styles.container}>
-        <BlurView intensity={80} tint="light" style={styles.blur}>
-          <View style={styles.inner}>
-            {state.routes.map((route, index) => {
-              const { options } = descriptors[route.key];
-              const isFocused = state.index === index;
-              const label = (options.tabBarLabel ?? options.title ?? route.name) as string;
-              const Icon = options.tabBarIcon;
+        <View style={styles.inner}>
+          {state.routes.map((route, index) => {
+            const { options } = descriptors[route.key];
+            const isFocused = state.index === index;
+            const label = (options.tabBarLabel ?? options.title ?? route.name) as string;
+            const Icon = options.tabBarIcon;
 
-              const onPress = () => {
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                });
-                if (!isFocused && !event.defaultPrevented) {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  navigation.navigate(route.name);
-                }
-              };
+            const onPress = () => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (!isFocused && !event.defaultPrevented) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.navigate(route.name);
+              }
+            };
 
-              return (
-                <Pressable
-                  key={route.key}
-                  onPress={onPress}
-                  style={[styles.tab, isFocused && styles.tabActive]}
+            return (
+              <Pressable
+                key={route.key}
+                onPress={onPress}
+                style={[styles.tab, isFocused && styles.tabActive]}
+              >
+                {Icon && (
+                  <View style={isFocused ? styles.iconActive : undefined}>
+                    {Icon({
+                      focused: isFocused,
+                      color: isFocused ? Colors.primary : Colors.text.secondary,
+                      size: 22,
+                    })}
+                  </View>
+                )}
+                <Text
+                  style={[
+                    styles.label,
+                    isFocused && styles.labelActive,
+                  ]}
+                  numberOfLines={1}
                 >
-                  {Icon && (
-                    <View style={isFocused ? styles.iconActive : undefined}>
-                      {Icon({
-                        focused: isFocused,
-                        color: isFocused ? Colors.primary : Colors.text.secondary,
-                        size: 22,
-                      })}
-                    </View>
-                  )}
-                  <Text
-                    style={[
-                      styles.label,
-                      isFocused && styles.labelActive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </BlurView>
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -79,22 +76,19 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
     marginBottom: Spacing.sm,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
     width: '100%',
     maxWidth: 420,
   },
-  blur: {
-    overflow: 'hidden',
-  },
   inner: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#FFFFFF',
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.sm,
   },

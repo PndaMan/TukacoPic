@@ -8,7 +8,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/theme';
 import { PhotoCard, PhotoModal, MeshGradientBackground } from '../../src/components';
 import api from '../../src/services/api';

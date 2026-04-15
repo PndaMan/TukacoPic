@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -24,7 +23,8 @@ import api from '../../src/services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PHOTO_WIDTH = SCREEN_WIDTH - Spacing.lg * 2;
-const PHOTO_HEIGHT = (SCREEN_HEIGHT - 280) / 2;
+const PHOTO_HEIGHT = (SCREEN_HEIGHT - 300) / 2;
+const TAB_BAR_HEIGHT = 80;
 
 export default function VoteScreen() {
   const insets = useSafeAreaInsets();
@@ -153,7 +153,7 @@ export default function VoteScreen() {
 
   if (loading) {
     return (
-      <MeshGradientBackground variant="warm">
+      <MeshGradientBackground>
         <View style={[styles.center, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
@@ -163,7 +163,7 @@ export default function VoteScreen() {
 
   if (message || !photos) {
     return (
-      <MeshGradientBackground variant="warm">
+      <MeshGradientBackground>
         <View style={[styles.center, { paddingTop: insets.top }]}>
           <Text style={styles.emptyIcon}>✨</Text>
           <Text style={styles.emptyText}>
@@ -181,8 +181,8 @@ export default function VoteScreen() {
   }
 
   return (
-    <MeshGradientBackground variant="warm">
-      <View style={[styles.container, { paddingTop: insets.top + Spacing.md }]}>
+    <MeshGradientBackground>
+      <View style={[styles.container, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + TAB_BAR_HEIGHT }]}>
         <View style={styles.header}>
           <Text style={styles.title}>Vote</Text>
           <Text style={styles.subtitle}>Tap the better photo</Text>
@@ -206,16 +206,14 @@ export default function VoteScreen() {
                   placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                 />
                 <View style={styles.photoOverlay}>
-                  <BlurView intensity={40} tint="dark" style={styles.photoBlur}>
-                    <View style={styles.photoInfo}>
-                      <Text style={styles.photoUser} numberOfLines={1}>
-                        {photos.photo1.uploader?.username}
-                      </Text>
-                      <Text style={styles.photoElo}>
-                        {Math.round(photos.photo1.elo_score)}
-                      </Text>
-                    </View>
-                  </BlurView>
+                  <View style={styles.photoInfo}>
+                    <Text style={styles.photoUser} numberOfLines={1}>
+                      {photos.photo1.uploader?.username}
+                    </Text>
+                    <Text style={styles.photoElo}>
+                      {Math.round(photos.photo1.elo_score)}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </Pressable>
@@ -238,16 +236,14 @@ export default function VoteScreen() {
                   placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                 />
                 <View style={styles.photoOverlay}>
-                  <BlurView intensity={40} tint="dark" style={styles.photoBlur}>
-                    <View style={styles.photoInfo}>
-                      <Text style={styles.photoUser} numberOfLines={1}>
-                        {photos.photo2.uploader?.username}
-                      </Text>
-                      <Text style={styles.photoElo}>
-                        {Math.round(photos.photo2.elo_score)}
-                      </Text>
-                    </View>
-                  </BlurView>
+                  <View style={styles.photoInfo}>
+                    <Text style={styles.photoUser} numberOfLines={1}>
+                      {photos.photo2.uploader?.username}
+                    </Text>
+                    <Text style={styles.photoElo}>
+                      {Math.round(photos.photo2.elo_score)}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </Pressable>
@@ -255,9 +251,7 @@ export default function VoteScreen() {
         </View>
 
         <Pressable onPress={handleSkip} style={styles.skipBtn}>
-          <BlurView intensity={30} tint="light" style={styles.skipBlur}>
-            <Text style={styles.skipText}>Skip</Text>
-          </BlurView>
+          <Text style={styles.skipText}>Skip</Text>
         </Pressable>
       </View>
     </MeshGradientBackground>
@@ -316,16 +310,13 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: BorderRadius.xxl,
     borderBottomRightRadius: BorderRadius.xxl,
   },
-  photoBlur: {
-    overflow: 'hidden',
-  },
   photoInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
   },
   photoUser: {
     ...Typography.subheadline,
@@ -342,15 +333,13 @@ const styles = StyleSheet.create({
   },
   skipBtn: {
     alignSelf: 'center',
-    marginBottom: 100,
+    marginBottom: Spacing.md,
     marginTop: Spacing.md,
     borderRadius: BorderRadius.pill,
     overflow: 'hidden',
-  },
-  skipBlur: {
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: Spacing.xxl,
     paddingVertical: Spacing.sm + 2,
-    overflow: 'hidden',
   },
   skipText: {
     ...Typography.subheadline,
