@@ -29,6 +29,7 @@ services:
     volumes:
       - ./backend/media:/app/media
       - ./backend/staticfiles:/app/staticfiles
+      - ./backend/db.sqlite3:/app/db.sqlite3
     ports:
       - "8000:8000"
     depends_on:
