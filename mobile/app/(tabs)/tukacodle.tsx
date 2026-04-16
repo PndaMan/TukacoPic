@@ -56,6 +56,8 @@ export default function TukacodleScreen() {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [userScore, setUserScore] = useState<any>(null);
   const [finalScore, setFinalScore] = useState(0);
+  const [championPhotoId, setChampionPhotoId] = useState<number | null>(null);
+  const [championWins, setChampionWins] = useState(0);
   // Track the actual gameState in a ref so useFocusEffect can read current value
   const gameStateRef = useRef<GameState>('loading');
   const setGameStateTracked = (state: GameState) => {
@@ -85,6 +87,8 @@ export default function TukacodleScreen() {
   const startGame = async () => {
     setGameStateTracked('loading');
     setStreak(0);
+    setChampionPhotoId(null);
+    setChampionWins(0);
     try {
       const res = await api.post('/tukacodle/start/');
       const data = res.data;
@@ -206,9 +210,42 @@ export default function TukacodleScreen() {
             await fetchUserAttempts();
             setGameStateTracked('game_over');
           } else if (res.data.next_photo) {
-            const nextPhotos = { photo1: photos[isFirst ? 'photo1' : 'photo2'], photo2: res.data.next_photo };
-            setPhotos(nextPhotos);
-            Image.prefetch(getImageUrl(res.data.next_photo.image));
+            // Track consecutive wins for the same photo
+            const winningPhoto = photos[isFirst ? 'photo1' : 'photo2'];
+            let newChampionWins = 1;
+            if (championPhotoId === photoId) {
+              newChampionWins = championWins + 1;
+            }
+
+            // If this photo has won 5 times in a row, replace both with a fresh set
+            if (newChampionWins >= 5) {
+              try {
+                const freshStart = await api.post('/tukacodle/start/');
+                const freshData = freshStart.data;
+                const freshPhotos = freshData.photos
+                  ? { photo1: freshData.photos[0], photo2: freshData.photos[1] }
+                  : freshData;
+                setPhotos(freshPhotos);
+                Image.prefetch(getImageUrl(freshPhotos.photo1.image));
+                Image.prefetch(getImageUrl(freshPhotos.photo2.image));
+                setChampionPhotoId(null);
+                setChampionWins(0);
+              } catch {
+                // Fallback to normal behavior
+                const nextPhotos = { photo1: winningPhoto, photo2: res.data.next_photo };
+                setPhotos(nextPhotos);
+                Image.prefetch(getImageUrl(res.data.next_photo.image));
+                setChampionPhotoId(photoId);
+                setChampionWins(newChampionWins);
+              }
+            } else {
+              const nextPhotos = { photo1: winningPhoto, photo2: res.data.next_photo };
+              setPhotos(nextPhotos);
+              Image.prefetch(getImageUrl(res.data.next_photo.image));
+              setChampionPhotoId(photoId);
+              setChampionWins(newChampionWins);
+            }
+
             setChosen(null);
             setCorrect(null);
           } else {
@@ -216,6 +253,9 @@ export default function TukacodleScreen() {
             startGame();
           }
         } else {
+          // Wrong answer — reset champion tracking
+          setChampionPhotoId(null);
+          setChampionWins(0);
           await fetchUserAttempts();
           setGameStateTracked('game_over');
         }
